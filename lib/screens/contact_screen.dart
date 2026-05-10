@@ -44,14 +44,42 @@ class ContactScreen extends StatelessWidget {
           //--------------------------------------------------
           // BESCHREIBUNG
           //--------------------------------------------------
-          const Text(
-            'Diese App lebt von aktuellen Informationen.\n\n'
-            '👉 Fehlt ein Schützenfest?\n'
-            '👉 Stimmen Daten nicht?\n'
-            '👉 Hast du neue Infos?\n'
-            '👉 Hast du Verbesserungsvorschläge?\n\n'
-            'Dann melde dich gerne!',
-          ),
+       
+const Text(
+  'Diese App lebt von aktuellen Informationen und eurer Unterstützung.\n\n'
+
+  '👉 Fehlt ein Schützenfest?\n'
+  '👉 Sind Daten nicht mehr aktuell?\n'
+  '👉 Gibt es neue Infos oder Änderungen?\n'
+  '👉 Hast du Ideen zur Verbesserung?\n\n'
+
+  'Dann melde dich gerne – jede Info hilft!\n\n'
+
+  '------------------------------\n\n'
+
+  '🦅 Adlerbereich (Live-Adlerschießen)\n\n'
+
+  'Du möchtest das Adlerschießen für dein Schützenfest live eintragen?\n\n'
+
+  '👉 Schreib uns einfach eine Nachricht\n'
+  '👉 Nenne den Ort / das Schützenfest\n\n'
+
+  'Du erhältst dann Zugriff für den Live-Bereich.\n\n'
+
+  'So können:\n'
+  '• Teilnehmer eingetragen werden\n'
+  '• Schüsse gezählt werden\n'
+  '• der Königsstand live verfolgt werden\n\n'
+
+  '------------------------------\n\n'
+
+  '📬 Kontakt\n\n'
+
+  'Tippe auf "Nachricht senden", um uns direkt eine E-Mail zu schicken.\n\n'
+
+  'Vielen Dank für deine Unterstützung! 🙌',
+),
+
 
           const SizedBox(height: 20),
 

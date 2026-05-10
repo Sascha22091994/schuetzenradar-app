@@ -4,7 +4,7 @@ class EmailService {
   static Future<void> sendFeedback() async {
     final Uri emailUri = Uri(
       scheme: 'mailto',
-      path: 'DEINE_MAIL@DOMAIN.DE', // 👈 HIER DEINE MAIL
+      path: 'info-schuetzenradar@web.de', // 👈 HIER DEINE MAIL
       queryParameters: {
         'subject': 'Schützenfeste App – Feedback',
         'body': '''
