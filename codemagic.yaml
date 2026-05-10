@@ -2,18 +2,17 @@ workflows:
   ios-workflow:
     name: iOS Workflow
     max_build_duration: 60
-    instance_type: mac_mini_m2
 
     environment:
       flutter: stable
 
     scripts:
       - flutter pub get
-      - flutter build ios --release --no-codesign
+      - flutter build ipa --release
 
     artifacts:
-      - build/ios/iphoneos/*.app
+      - build/ios/ipa/*.ipa
 
     publishing:
       app_store_connect:
-        auth: integration
+        submit_to_testflight: true
