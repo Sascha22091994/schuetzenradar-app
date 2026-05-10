@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "66726540458",
+    "project_id": "schuetzenfest-app",
+    "storage_bucket": "schuetzenfest-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:66726540458:android:e7f5601531cbd446cdccd3",
+        "android_client_info": {
+          "package_name": "com.example.schuetzenfest_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDE3onF4JT69OeL6nDKJPhNNVHDT1J6AM8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

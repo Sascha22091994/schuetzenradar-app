@@ -1,0 +1,401 @@
+# 📘 Admin Handbuch – Schützenfest App
+
+---
+
+# 🧭 ÜBERSICHT
+
+Die App besteht aus folgenden Bereichen:
+
+📰 News  
+→ Neuigkeiten + Live Einstiegspunkt
+
+📅 Termine  
+→ Übersicht aller Schützenfeste
+
+📍 Sonstiges  
+→ Orte + Adlerschießen + Admin
+
+📬 Kontakt  
+→ Feedback / Mail
+
+---
+
+# 🔐 ADMIN SYSTEM
+
+## Login
+
+1. Öffne: Sonstiges
+2. Tippe oben rechts auf 🔒
+3. Passwort eingeben:
+
+    12345-App
+
+---
+
+## Nach Login
+
+🔒 wird zu ⚙️
+
+→ Klick auf ⚙️ öffnet den Admin Bereich
+
+---
+
+# ⚙️ ADMIN BEREICH
+
+Hier kannst du ALLES verwalten:
+
+- 📰 News
+- 📅 Termine
+- 📍 Orte
+
+---
+
+# 📰 NEWS VERWALTEN
+
+## ➕ Neue News
+
+- Admin Bereich öffnen
+- „News verwalten“
+- ➕ drücken
+
+### Eingaben:
+- Titel
+- Inhalt
+
+👉 Speichern → sofort sichtbar
+
+---
+
+## ✏️ Bearbeiten
+
+- Lange auf eine News drücken (Long Press)
+
+---
+
+## 🗑 Löschen
+
+- Nach links wischen
+
+---
+
+## 🔴 Live Anzeige starten
+
+Im News Screen:
+
+
+LIVE: Adlerschießen verfolgen
+
+→ klicken → Ort auswählen
+
+---
+
+## 🔥 Live Auswahl
+
+- aktive Orte werden grün markiert
+- Anzeige:
+  - 🔥 Live aktiv
+  - grau = kein Event
+
+---
+
+# 📅 TERMINE VERWALTEN
+
+## ➕ Neues Fest
+
+- Admin Bereich → Termine
+- ➕ klicken
+
+---
+
+## Pflichtfelder
+
+- Name
+- Adresse
+- Startdatum (YYYY-MM-DD)
+- Enddatum (YYYY-MM-DD)
+
+---
+
+## 🎵 Musik (WICHTIG)
+
+- Freitag
+- Samstag
+- Sonntag
+
+---
+
+## Optional
+
+- Highlights
+- Outfit Tipp
+- Website
+
+---
+
+# 📍 ORTE VERWALTEN
+
+## ➕ Ort hinzufügen
+
+- Admin Bereich → Orte
+- ➕ klicken
+
+---
+
+## Felder
+
+- Name
+- Instagram
+- Website
+- Adlerschießen aktiv (Switch)
+
+---
+
+## ✏️ Bearbeiten
+
+- Ort anklicken
+
+---
+
+## 🗑 Löschen
+
+- Swipe nach links
+
+---
+
+# 🦅 ADLERSCHIESSEN
+
+## Zugriff
+
+1. Ort öffnen
+2. „Adlerschießen“
+3. Passwort eingeben
+
+👉 Passwort liegt in Firebase
+
+---
+
+## 👤 Spieler hinzufügen
+
+- Name eingeben
+- „Hinzufügen“ klicken
+
+---
+
+## 🔫 Schusszähler
+
+- „Schuss“ Button drücken
+- zählt global hoch
+
+---
+
+## 🎯 Treffer setzen
+
+Beispiel:
+
+Krone → Finn → Schuss 30
+
+👉 wird gespeichert
+
+---
+
+## 👑 König
+
+Teil:
+
+Adler 🦅
+
+→ Schütze wird König
+
+---
+
+## 🔄 Reset
+
+- oben rechts (↻ Icon)
+- für ALLE sichtbar
+
+👉 löscht:
+- Schüsse
+- Ergebnisse
+- König
+
+---
+
+# 📺 LIVE ANZEIGE (WICHTIG!)
+
+👉 erreichbar über News Screen
+
+---
+
+## Zeigt:
+
+- Gesamt Schüsse
+- alle Treffer
+- König 👑
+
+---
+
+## Besonderheiten
+
+✅ automatisch aktualisiert  
+✅ kein Refresh nötig  
+✅ ideal für Tablet / Bildschirm  
+
+---
+
+## Nutzung vor Ort
+
+- Tablet aufstellen
+- Screen geöffnet lassen
+- alle sehen Live Stand
+
+---
+
+# 🔥 AUTOMATISCHE NEWS
+
+Bei jedem Treffer:
+
+→ wird automatisch erstellt:
+
+
+🦅 Stelle
+Finn hat Krone mit Schuss 30 getroffen
+
+---
+
+# 💾 FIREBASE STRUKTUR
+
+## Collections
+
+### locations
+→ Orte
+
+### festivals
+→ Termine
+
+### news
+→ News Feed
+
+### adler_events
+→ aktueller Spielstand
+
+### location_admins
+→ Passwort pro Ort
+
+---
+
+# 🧠 SYSTEM LOGIK
+
+## Adler
+
+- 1 Dokument pro Ort
+- wird immer überschrieben
+
+---
+
+## News
+
+- wird erweitert durch:
+  - Admin
+  - Adler Treffer
+
+---
+
+# 📊 DATEISTRUKTUR
+
+## models/
+
+- festival.dart
+- news.dart
+- location.dart
+
+---
+
+## screens/
+
+- home_screen.dart → Termine
+- news_screen.dart → News + Live
+- misc_screen.dart → Orte
+- location_detail_screen.dart → Ort Details
+- location_admin_screen.dart → Orte Verwaltung
+- admin_dashboard_screen.dart → Admin Menü
+- adler_screen.dart → Adler Eingabe
+- adler_live_screen.dart → Live Anzeige
+
+---
+
+## services/
+
+- admin_service.dart
+- email_service.dart
+- favorite_service.dart
+
+---
+
+## widgets/
+
+- festival_card.dart
+- countdown_widget.dart
+
+---
+
+# ✅ TEST ABLAUF
+
+1. Ort öffnen
+2. Adlerschießen starten
+3. Spieler hinzufügen
+4. Schüsse drücken
+5. Treffer setzen
+
+---
+
+## Ergebnis
+
+✅ Live Screen aktualisiert sich  
+✅ News wird automatisch erstellt  
+
+---
+
+# ⚠️ WICHTIGE HINWEISE
+
+## Datum
+
+Immer:
+
+YYYY-MM-DD
+
+---
+
+## Admin Passwort
+
+Aktuell im Code:
+
+12345-App
+
+---
+
+## Info Block (News)
+
+- kann einmal ausgeblendet werden
+- bleibt dauerhaft weg
+
+---
+
+# 🚀 IDEEN FÜR SPÄTER
+
+- 🔔 Push bei König
+- 📺 Fullscreen Mode
+- 🎥 Beamer Anzeige
+- ⭐ Lieblingsorte
+- 📊 Statistiken
+
+---
+
+# ✅ FAZIT
+
+Die App ist:
+
+✅ komplett administrierbar  
+✅ Live Event tauglich  
+✅ Firebase gesteuert  
+✅ modular aufgebaut  
+✅ bereit für echten Einsatz  

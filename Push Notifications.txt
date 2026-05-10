@@ -1,0 +1,28 @@
+Push Notifications
+Beispiele:
+
+„Heute startet Rahden!“
+„Neues Fest hinzugefügt“
+
+
+2. Kartenansicht
+👉 Festivals auf Google Maps
+
+"Heute / Wochenende" Filter
+
+
+1
+✅ Datum Picker statt Textfeld
+→ aktuell: YYYY-MM-DD eingeben ❌
+→ besser: Kalender auswählen
+
+
+✅ Edit Dialog nicer (mehr Felder bei Festivals)
+
+
+✅ Lade-Fehler schöner anzeigen
+
+
+- Splash Screen
+
+
