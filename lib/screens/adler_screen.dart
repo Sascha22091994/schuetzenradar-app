@@ -51,14 +51,31 @@ class _AdlerScreenState extends State<AdlerScreen> {
 
   Map<String, dynamic> get current => eventData[selectedEvent]!;
 
+  //--------------------------------------------------
+  // ✅ NEWS HELPER (NEU)
+  //--------------------------------------------------
+  Future<void> _addNews({
+    required String title,
+    required String content,
+    required String type,
+    required bool isImportant,
+  }) async {
+    await FirebaseFirestore.instance.collection('news').add({
+      "title": title,
+      "content": content,
+      "date": DateTime.now().toIso8601String(),
+      "type": type,
+      "isImportant": isImportant,
+      "location": widget.locationName,
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _loadBothEvents();
   }
 
-  //--------------------------------------------------
-  // ✅ FIXED LOAD (KEINE AUTO-WRITES MEHR!)
   //--------------------------------------------------
   Future<void> _loadBothEvents() async {
 
@@ -91,8 +108,6 @@ class _AdlerScreenState extends State<AdlerScreen> {
     setState(() {});
   }
 
-  //--------------------------------------------------
-  // ✅ FIXED SAVE (STABIL + KEINE FEHLER)
   //--------------------------------------------------
   Future<void> _saveData() async {
 
@@ -182,15 +197,13 @@ class _AdlerScreenState extends State<AdlerScreen> {
       "lastUpdate": FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
- await FirebaseFirestore.instance
-    .collection('locations')
-    .doc(widget.locationId)
-    .set({
-  "isLive": false,
-}, SetOptions(merge: true)); // ✅ richtige Klammer!
-
-}
-
+    await FirebaseFirestore.instance
+        .collection('locations')
+        .doc(widget.locationId)
+        .set({
+      "isLive": false,
+    }, SetOptions(merge: true));
+  }
 
   //--------------------------------------------------
   void _switchEvent(String type) {
@@ -221,9 +234,6 @@ class _AdlerScreenState extends State<AdlerScreen> {
         child: Column(
           children: [
 
-            //--------------------------------------------------
-            // EVENT SWITCH
-            //--------------------------------------------------
             Row(
               children: [
                 Expanded(
@@ -250,14 +260,9 @@ class _AdlerScreenState extends State<AdlerScreen> {
             ),
 
             const SizedBox(height: 10),
-
             Text("Jetzt: ${_formatTime(DateTime.now())}"),
-
             const SizedBox(height: 10),
 
-            //--------------------------------------------------
-            // PLAYER INPUT
-            //--------------------------------------------------
             Row(
               children: [
                 Expanded(
@@ -284,9 +289,6 @@ class _AdlerScreenState extends State<AdlerScreen> {
 
             const SizedBox(height: 10),
 
-            //--------------------------------------------------
-            // SHOTS
-            //--------------------------------------------------
             Card(
               color: Colors.green.shade100,
               child: ListTile(
@@ -303,9 +305,6 @@ class _AdlerScreenState extends State<AdlerScreen> {
               ),
             ),
 
-            //--------------------------------------------------
-            // RESULTS
-            //--------------------------------------------------
             Expanded(
               child: ListView(
                 children: parts.map((part) {
@@ -326,20 +325,45 @@ class _AdlerScreenState extends State<AdlerScreen> {
                             onChanged: (value) async {
                               if (value == null) return;
 
+                              final player = value;
+                              final shotNumber = current['shots'];
+
                               setState(() {
                                 current['results'][part] = {
-                                  "name": value,
-                                  "shots": current['shots'],
+                                  "name": player,
+                                  "shots": shotNumber,
                                   "time": DateTime.now().toIso8601String(),
                                   "order": DateTime.now().millisecondsSinceEpoch,
                                 };
 
                                 if (part == "Adler 🦅") {
-                                  current['kingName'] = value;
+                                  current['kingName'] = player;
                                 }
                               });
 
                               await _saveData();
+
+                              //--------------------------------------------------
+                              // ✅ TREFFER NEWS
+                              //--------------------------------------------------
+                              await _addNews(
+                                title: "🎯 Treffer: $part",
+                                content: "$player hat $part abgeschossen (${widget.locationName})",
+                                type: "live",
+                                isImportant: false,
+                              );
+
+                              //--------------------------------------------------
+                              // ✅ KÖNIG NEWS
+                              //--------------------------------------------------
+                              if (part == "Adler 🦅") {
+                                await _addNews(
+                                  title: "👑 Neuer König!",
+                                  content: "$player ist König in ${widget.locationName}",
+                                  type: "highlight",
+                                  isImportant: true,
+                                );
+                              }
                             },
                           ),
                   );
