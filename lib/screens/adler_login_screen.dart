@@ -177,7 +177,7 @@ class _AdlerLoginScreenState extends State<AdlerLoginScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface..withValues(alpha:0.7),
                 ),
               ),
             ],

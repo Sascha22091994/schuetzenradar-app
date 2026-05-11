@@ -275,7 +275,7 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
                             color: Colors.grey.shade900,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Colors.greenAccent.withOpacity(0.3),
+                              color: Colors.greenAccent.withValues(alpha: 0.3),
                             ),
                           ),
 
