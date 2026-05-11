@@ -19,14 +19,8 @@ class _AdlerScreenState extends State<AdlerScreen> {
 
   final TextEditingController nameController = TextEditingController();
 
-  //--------------------------------------------------
-  // ✅ EVENT AUSWAHL
-  //--------------------------------------------------
   String selectedEvent = "jung";
 
-  //--------------------------------------------------
-  // ✅ PARALLELE STATES
-  //--------------------------------------------------
   Map<String, Map<String, dynamic>> eventData = {
     "jung": {
       "shots": 0,
@@ -42,7 +36,6 @@ class _AdlerScreenState extends State<AdlerScreen> {
     },
   };
 
-  //--------------------------------------------------
   final List<String> parts = [
     "Krone 👑",
     "Zepter ⚜️",
@@ -52,14 +45,12 @@ class _AdlerScreenState extends State<AdlerScreen> {
     "Adler 🦅",
   ];
 
-  //--------------------------------------------------
   String _formatTime(DateTime time) {
     return "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
   }
 
   Map<String, dynamic> get current => eventData[selectedEvent]!;
 
-  //--------------------------------------------------
   @override
   void initState() {
     super.initState();
@@ -67,10 +58,9 @@ class _AdlerScreenState extends State<AdlerScreen> {
   }
 
   //--------------------------------------------------
-  // ✅ BEIDE EVENTS LADEN + FIX (LinkedMap → Map)
+  // ✅ FIX: isActive reset wenn KEINE Spieler
   //--------------------------------------------------
   Future<void> _loadBothEvents() async {
-
     for (var event in ["jung", "alt"]) {
 
       final doc = await FirebaseFirestore.instance
@@ -83,20 +73,31 @@ class _AdlerScreenState extends State<AdlerScreen> {
       if (doc.exists) {
         final data = doc.data()!;
 
+        final players = List<String>.from(data['participants'] ?? []);
+
         eventData[event] = {
           "shots": data['shots'] ?? 0,
           "kingName": data['kingName'],
-
           "results": Map<String, dynamic>.from(
-            (data['results'] ?? {}).map((key, value) =>
-                MapEntry(
-                  key.toString(),
-                  Map<String, dynamic>.from(value),
-                )),
+            (data['results'] ?? {}).map((k, v) =>
+                MapEntry(k.toString(), Map<String, dynamic>.from(v))),
           ),
-
-          "players": List<String>.from(data['participants'] ?? []),
+          "players": players,
         };
+
+        //--------------------------------------------------
+        // ✅ WICHTIG: wenn keine Spieler → nicht aktiv
+        //--------------------------------------------------
+        if (players.isEmpty && data['isActive'] == true) {
+          await FirebaseFirestore.instance
+              .collection('adler_events')
+              .doc(widget.locationId)
+              .collection('events')
+              .doc(event)
+              .set({
+            "isActive": false,
+          }, SetOptions(merge: true));
+        }
       }
     }
 
@@ -104,8 +105,13 @@ class _AdlerScreenState extends State<AdlerScreen> {
   }
 
   //--------------------------------------------------
-  Future<void> _saveData() async {
+ Future<void> _saveData() async {
 
+  print("🔥 SAVE START");
+  print("📍 Location: ${widget.locationId}");
+  print("🎯 Event: $selectedEvent");
+
+  try {
     await FirebaseFirestore.instance
         .collection('adler_events')
         .doc(widget.locationId)
@@ -122,11 +128,15 @@ class _AdlerScreenState extends State<AdlerScreen> {
       "lastUpdate": DateTime.now().toIso8601String(),
 
     }, SetOptions(merge: true));
-  }
 
+    print("✅ SAVE ERFOLGREICH");
+
+  } catch (e) {
+    print("❌ FEHLER BEIM SPEICHERN: $e");
+  }
+}
   //--------------------------------------------------
   Future<void> _addPlayer() async {
-
     final name = nameController.text.trim();
     if (name.isEmpty || current['players'].contains(name)) return;
 
@@ -147,12 +157,8 @@ class _AdlerScreenState extends State<AdlerScreen> {
         title: const Text("Reset?"),
         content: const Text("Wirklich alles löschen?"),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Abbrechen")),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("OK")),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Abbrechen")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("OK")),
         ],
       ),
     );
@@ -166,7 +172,20 @@ class _AdlerScreenState extends State<AdlerScreen> {
       current['players'].clear();
     });
 
-    await _saveData();
+    await FirebaseFirestore.instance
+        .collection('adler_events')
+        .doc(widget.locationId)
+        .collection('events')
+        .doc(selectedEvent)
+        .set({
+      "isActive": false,
+      "shots": 0,
+      "kingName": null,
+      "results": {},
+      "participants": [],
+      "eventType": selectedEvent,
+      "lastUpdate": DateTime.now().toIso8601String(),
+    }, SetOptions(merge: true));
   }
 
   //--------------------------------------------------
@@ -189,10 +208,7 @@ class _AdlerScreenState extends State<AdlerScreen> {
         title: Text("Adler - ${widget.locationName} (${selectedEvent.toUpperCase()})"),
         backgroundColor: Colors.green,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _resetGame,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _resetGame),
         ],
       ),
 
@@ -201,33 +217,24 @@ class _AdlerScreenState extends State<AdlerScreen> {
         child: Column(
           children: [
 
-            //--------------------------------------------------
-            // ✅ SWITCH
-            //--------------------------------------------------
             Row(
               children: [
-
                 Expanded(
                   child: GestureDetector(
                     onTap: () => _switchEvent("jung"),
                     child: Container(
                       padding: const EdgeInsets.all(12),
-                      color: selectedEvent == "jung"
-                          ? Colors.green
-                          : Colors.grey,
+                      color: selectedEvent == "jung" ? Colors.green : Colors.grey,
                       child: const Center(child: Text("Jungkönig")),
                     ),
                   ),
                 ),
-
                 Expanded(
                   child: GestureDetector(
                     onTap: () => _switchEvent("alt"),
                     child: Container(
                       padding: const EdgeInsets.all(12),
-                      color: selectedEvent == "alt"
-                          ? Colors.green
-                          : Colors.grey,
+                      color: selectedEvent == "alt" ? Colors.green : Colors.grey,
                       child: const Center(child: Text("Altkönig")),
                     ),
                   ),
@@ -237,19 +244,10 @@ class _AdlerScreenState extends State<AdlerScreen> {
 
             const SizedBox(height: 10),
 
-            //--------------------------------------------------
-            // ✅ UHRZEIT
-            //--------------------------------------------------
-            Text(
-              "Jetzt: ${_formatTime(DateTime.now())}",
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            Text("Jetzt: ${_formatTime(DateTime.now())}"),
 
             const SizedBox(height: 10),
 
-            //--------------------------------------------------
-            // ADD PLAYER
-            //--------------------------------------------------
             Row(
               children: [
                 Expanded(
@@ -262,10 +260,7 @@ class _AdlerScreenState extends State<AdlerScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _addPlayer,
-                  child: const Text("Hinzufügen"),
-                ),
+                ElevatedButton(onPressed: _addPlayer, child: const Text("Hinzufügen")),
               ],
             ),
 
@@ -279,9 +274,6 @@ class _AdlerScreenState extends State<AdlerScreen> {
 
             const SizedBox(height: 10),
 
-            //--------------------------------------------------
-            // SCHÜSSE
-            //--------------------------------------------------
             Card(
               color: Colors.green.shade100,
               child: ListTile(
@@ -298,54 +290,42 @@ class _AdlerScreenState extends State<AdlerScreen> {
               ),
             ),
 
-            //--------------------------------------------------
-            // TREFFER
-            //--------------------------------------------------
             Expanded(
               child: ListView(
                 children: parts.map((part) {
 
                   final result = results[part];
 
-                  return Card(
-                    child: ListTile(
-                      title: Text(part),
+                  return ListTile(
+                    title: Text(part),
+                    subtitle: result != null
+                        ? Text("${result['name']} • Schuss ${result['shots']} • ${_formatTime(DateTime.parse(result['time']))}")
+                        : null,
+                    trailing: result != null
+                        ? const Icon(Icons.check, color: Colors.green)
+                        : DropdownButton<String>(
+                            hint: const Text("Schütze"),
+                            items: players.map((p) =>
+                                DropdownMenuItem(value: p, child: Text(p))).toList(),
+                            onChanged: (value) async {
+                              if (value == null) return;
 
-                      subtitle: result != null
-                          ? Text(
-                              "${result['name']} • Schuss ${result['shots']} • ${_formatTime(DateTime.parse(result['time']))}",
-                            )
-                          : null,
+                              setState(() {
+                                current['results'][part] = {
+                                  "name": value,
+                                  "shots": current['shots'],
+                                  "time": DateTime.now().toIso8601String(),
+                                  "order": DateTime.now().millisecondsSinceEpoch,
+                                };
 
-                      trailing: result != null
-                          ? const Icon(Icons.check, color: Colors.green)
-                          : DropdownButton<String>(
-                              hint: const Text("Schütze"),
-                              value: null,
-                              items: players.map((p) =>
-                                  DropdownMenuItem(
-                                      value: p, child: Text(p)))
-                                  .toList(),
-                              onChanged: (value) async {
-                                if (value == null) return;
+                                if (part == "Adler 🦅") {
+                                  current['kingName'] = value;
+                                }
+                              });
 
-                                setState(() {
-                                  current['results'][part] = {
-                                    "name": value,
-                                    "shots": current['shots'],
-                                    "time": DateTime.now().toIso8601String(),
-                                    "order": DateTime.now().millisecondsSinceEpoch,
-                                  };
-
-                                  if (part == "Adler 🦅") {
-                                    current['kingName'] = value;
-                                  }
-                                });
-
-                                await _saveData();
-                              },
-                            ),
-                    ),
+                              await _saveData();
+                            },
+                          ),
                   );
                 }).toList(),
               ),

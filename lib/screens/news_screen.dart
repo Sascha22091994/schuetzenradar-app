@@ -17,13 +17,8 @@ class NewsScreen extends StatefulWidget {
 class _NewsScreenState extends State<NewsScreen> {
 
   bool _showInfo = true;
-
-  //--------------------------------------------------
-  // ✅ FILTER
-  //--------------------------------------------------
   String selectedFilter = "all";
 
-  //--------------------------------------------------
   @override
   void initState() {
     super.initState();
@@ -48,7 +43,7 @@ class _NewsScreenState extends State<NewsScreen> {
 
   //--------------------------------------------------
   // ✅ ADD NEWS
-  //--------------------------------------------------
+ //--------------------------------------------------
   void _showAddNewsDialog() {
     final title = TextEditingController();
     final content = TextEditingController();
@@ -60,14 +55,8 @@ class _NewsScreenState extends State<NewsScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: title,
-              decoration: const InputDecoration(labelText: "Titel"),
-            ),
-            TextField(
-              controller: content,
-              decoration: const InputDecoration(labelText: "Text"),
-            ),
+            TextField(controller: title, decoration: const InputDecoration(labelText: "Titel")),
+            TextField(controller: content, decoration: const InputDecoration(labelText: "Text")),
           ],
         ),
         actions: [
@@ -80,7 +69,6 @@ class _NewsScreenState extends State<NewsScreen> {
                 "type": "highlight",
                 "isImportant": true,
               });
-
               Navigator.pop(context);
             },
             child: const Text("Speichern"),
@@ -104,27 +92,17 @@ class _NewsScreenState extends State<NewsScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: title,
-              decoration: const InputDecoration(labelText: "Titel"),
-            ),
-            TextField(
-              controller: content,
-              decoration: const InputDecoration(labelText: "Text"),
-            ),
+            TextField(controller: title, decoration: const InputDecoration(labelText: "Titel")),
+            TextField(controller: content, decoration: const InputDecoration(labelText: "Text")),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () async {
-              await FirebaseFirestore.instance
-                  .collection('news')
-                  .doc(id)
-                  .update({
+              await FirebaseFirestore.instance.collection('news').doc(id).update({
                 "title": title.text,
                 "content": content.text,
               });
-
               Navigator.pop(context);
             },
             child: const Text("Speichern"),
@@ -134,105 +112,100 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  // 🔽 NUR DIESE METHODE WURDE ANGEPASST
-//--------------------------------------------------
-// ✅ LIVE AUSWAHL
-//--------------------------------------------------
-Future<void> _openLiveSelection() async {
+  //--------------------------------------------------
+  // ✅ LIVE HELPER
+  //--------------------------------------------------
+  Future<bool> _isLocationLive(String locationId) async {
+    final jung = await FirebaseFirestore.instance
+        .collection('adler_events')
+        .doc(locationId)
+        .collection('events')
+        .doc('jung')
+        .get();
 
-  final locationsSnapshot =
-      await FirebaseFirestore.instance.collection('locations').get();
+    final alt = await FirebaseFirestore.instance
+        .collection('adler_events')
+        .doc(locationId)
+        .collection('events')
+        .doc('alt')
+        .get();
 
-  final adlerSnapshot =
-      await FirebaseFirestore.instance.collection('adler_events').get();
-
-  Map<String, bool> activeMap = {};
-
-  for (var doc in adlerSnapshot.docs) {
-    final data = doc.data();
-
-    if (data['results'] != null &&
-        (data['results'] as Map).isNotEmpty) {
-      activeMap[doc.id] = true;
-    }
+    return (jung.data()?['isActive'] == true) ||
+           (alt.data()?['isActive'] == true);
   }
 
   //--------------------------------------------------
-  // ✅ SORTIERUNG LIVE OBEN
+  // ✅ LIVE AUSWAHL (FIXED)
   //--------------------------------------------------
-  final docs = locationsSnapshot.docs;
+  Future<void> _openLiveSelection() async {
 
-  final activeDocs =
-      docs.where((doc) => activeMap[doc.id] == true).toList();
+    final locationsSnapshot =
+        await FirebaseFirestore.instance.collection('locations').get();
 
-  final inactiveDocs =
-      docs.where((doc) => activeMap[doc.id] != true).toList();
+    Map<String, bool> activeMap = {};
 
-  final sortedDocs = [
-    ...activeDocs,
-    ...inactiveDocs,
-  ];
+    for (var doc in locationsSnapshot.docs) {
+      if (await _isLocationLive(doc.id)) {
+        activeMap[doc.id] = true;
+      }
+    }
 
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: const Text("Ort auswählen"),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: ListView(
-          children: [
+    final docs = locationsSnapshot.docs;
 
-            //--------------------------------------------------
-            // ✅ HEADER (OPTIONAL)
-            //--------------------------------------------------
-            if (activeDocs.isNotEmpty)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: Text(
-                  "🔴 LIVE AKTUELL",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+    final activeDocs =
+        docs.where((doc) => activeMap[doc.id] == true).toList();
+
+    final inactiveDocs =
+        docs.where((doc) => activeMap[doc.id] != true).toList();
+
+    final sortedDocs = [...activeDocs, ...inactiveDocs];
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Ort auswählen"),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            children: [
+
+              if (activeDocs.isNotEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text("🔴 LIVE AKTUELL", style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-              ),
 
-            //--------------------------------------------------
-            // ✅ LISTE
-            //--------------------------------------------------
-            ...sortedDocs.map((doc) {
+              ...sortedDocs.map((doc) {
+                final isActive = activeMap[doc.id] == true;
 
-              final name = doc['name'] ?? "";
-              final isActive = activeMap[doc.id] == true;
-
-              return Card(
-                color: isActive ? Colors.green.shade50 : null,
-                child: ListTile(
-                  title: Text(name),
-                  subtitle: isActive
-                      ? const Text("🔥 Live aktiv")
-                      : const Text("Keine aktuellen Daten"),
-                  onTap: () {
-                    Navigator.pop(context);
-
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AdlerLiveScreen(
-                          locationId: doc.id,
-                          locationName: name,
+                return Card(
+                  color: isActive ? Colors.green.shade50 : null,
+                  child: ListTile(
+                    title: Text(doc['name'] ?? ""),
+                    subtitle: isActive
+                        ? const Text("🔥 Live aktiv")
+                        : const Text("Keine aktuellen Daten"),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AdlerLiveScreen(
+                            locationId: doc.id,
+                            locationName: doc['name'] ?? "",
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            }),
-          ],
+                      );
+                    },
+                  ),
+                );
+              }),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   //--------------------------------------------------
   String _formatDate(DateTime d) {
@@ -254,9 +227,6 @@ Future<void> _openLiveSelection() async {
         ],
       ),
 
-      //--------------------------------------------------
-      // ✅ FAB
-      //--------------------------------------------------
       floatingActionButton: AdminService.isAdmin
           ? FloatingActionButton(
               onPressed: _showAddNewsDialog,
@@ -268,7 +238,6 @@ Future<void> _openLiveSelection() async {
               label: const Text("News melden"),
             ),
 
-      //--------------------------------------------------
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('news')
@@ -283,9 +252,6 @@ Future<void> _openLiveSelection() async {
 
           final allDocs = snapshot.data!.docs;
 
-          //--------------------------------------------------
-          // ✅ FILTER
-          //--------------------------------------------------
           final docs = allDocs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
 
@@ -312,15 +278,10 @@ Future<void> _openLiveSelection() async {
                   ),
                   child: Stack(
                     children: [
-                      const Text(
-                        '🚀 Community News Plattform\n\n✔ Infos\n✔ Live Updates\n✔ Highlights',
-                      ),
+                      const Text('🚀 Community News Plattform\n\n✔ Infos\n✔ Live Updates\n✔ Highlights'),
                       Positioned(
                         right: 0,
-                        child: GestureDetector(
-                          onTap: _hideInfo,
-                          child: const Icon(Icons.close),
-                        ),
+                        child: GestureDetector(onTap: _hideInfo, child: const Icon(Icons.close)),
                       ),
                     ],
                   ),
@@ -341,149 +302,107 @@ Future<void> _openLiveSelection() async {
               const SizedBox(height: 10),
 
               //--------------------------------------------------
-              // LIVE BUTTON
+              // ✅ LIVE BUTTON (FIXED)
               //--------------------------------------------------
-           FutureBuilder<QuerySnapshot>(
-  future: FirebaseFirestore.instance
-      .collection('adler_events')
-      .get(),
-  builder: (context, snapshot) {
+              FutureBuilder(
+                future: FirebaseFirestore.instance.collection('adler_events').get(),
+                builder: (context, snapshot) {
 
-    bool hasLive = false;
+                  if (!snapshot.hasData) return const SizedBox();
 
-    if (snapshot.hasData) {
-      for (var doc in snapshot.data!.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+                  final docs = snapshot.data!.docs;
 
-        if (data['results'] != null &&
-            (data['results'] as Map).isNotEmpty) {
-          hasLive = true;
-          break;
-        }
-      }
-    }
+                  return FutureBuilder(
+                    future: Future.wait(docs.map((d) => _isLocationLive(d.id))),
+         
+         builder: (ctx, liveSnap) {
 
-    return Card(
-      color: hasLive ? Colors.red.shade100 : null,
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: Icon(
-          Icons.visibility,
-          color: hasLive ? Colors.red : Colors.grey,
-        ),
-        title: Row(
-          children: [
-            Text(
-              "Adlerschießen verfolgen",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: hasLive ? Colors.red : Colors.black,
+  if (!liveSnap.hasData) {
+    // 👉 Wichtig: kein falscher Zustand anzeigen!
+    return const SizedBox(); 
+  }
+
+  final results = liveSnap.data as List<bool>;
+  final hasLive = results.contains(true);
+
+                      return Card(
+                        color: hasLive ? Colors.red.shade100 : null,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          leading: Icon(Icons.visibility, color: hasLive ? Colors.red : Colors.grey),
+                          title: Row(
+                            children: [
+                              Text(
+                                "Adlerschießen verfolgen",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: hasLive ? Colors.red : Colors.black,
+                                ),
+                              ),
+                              if (hasLive)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Text("LIVE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                            ],
+                          ),
+                          subtitle: Text(hasLive ? "🔥 Gerade aktiv!" : "Momentan kein Live Event"),
+                          trailing: const Icon(Icons.arrow_forward_ios),
+                          onTap: _openLiveSelection,
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
-            ),
-
-            //--------------------------------------------------
-            // ✅ LIVE BADGE
-            //--------------------------------------------------
-            if (hasLive)
-              Container(
-                margin: const EdgeInsets.only(left: 8),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  "LIVE",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        subtitle: Text(
-          hasLive
-              ? "🔥 Gerade aktiv!"
-              : "Momentan kein Live Event",
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios),
-        onTap: _openLiveSelection,
-      ),
-    );
-  },
-),
 
               //--------------------------------------------------
-              // ✅ NEWS LIST
+              // NEWS LIST
               //--------------------------------------------------
               ...docs.map((doc) {
 
-                final news = NewsItem.fromMap(
-                    doc.data() as Map<String, dynamic>);
-
-                final important = (doc.data()
-                        as Map<String, dynamic>)['isImportant'] ==
-                    true;
+                final news = NewsItem.fromMap(doc.data() as Map<String, dynamic>);
+                final important = (doc.data() as Map<String, dynamic>)['isImportant'] == true;
 
                 return Dismissible(
                   key: Key(doc.id),
-                  direction: AdminService.isAdmin
-                      ? DismissDirection.endToStart
-                      : DismissDirection.none,
-
-                  confirmDismiss: (_) async {
-  return await showDialog(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text("Löschen?"),
-      content: const Text("Bist du sicher?"),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text("Abbrechen"),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text("Löschen"),
-        ),
-      ],
-    ),
-  );
-},
-
-onDismissed: (_) async {
-  await FirebaseFirestore.instance
-      .collection('news')
-      .doc(doc.id)
-      .delete();
-},
-
+                  direction: AdminService.isAdmin ? DismissDirection.endToStart : DismissDirection.none,
+                  confirmDismiss: (_) async => await showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text("Löschen?"),
+                      content: const Text("Bist du sicher?"),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Abbrechen")),
+                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Löschen")),
+                      ],
+                    ),
+                  ),
+                  onDismissed: (_) async {
+                    await FirebaseFirestore.instance.collection('news').doc(doc.id).delete();
+                  },
                   background: Container(
                     color: Colors.red,
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(Icons.delete,
-                        color: Colors.white),
+                    child: const Icon(Icons.delete, color: Colors.white),
                   ),
-
                   child: GestureDetector(
                     onLongPress: () {
                       if (AdminService.isAdmin) {
                         _editNews(doc.id, news);
                       }
                     },
-
                     child: Card(
-                      color:
-                          important ? Colors.amber.shade50 : null,
+                      color: important ? Colors.amber.shade50 : null,
                       child: ListTile(
                         title: Text(news.title),
-                        subtitle: Text(
-                          "${_formatDate(news.date)}\n${news.text}",
-                        ),
+                        subtitle: Text("${_formatDate(news.date)}\n${news.text}"),
                       ),
                     ),
                   ),
@@ -496,7 +415,6 @@ onDismissed: (_) async {
     );
   }
 
-  //--------------------------------------------------
   Widget _filterButton(String label, String value) {
     final active = selectedFilter == value;
 
@@ -504,19 +422,16 @@ onDismissed: (_) async {
       onTap: () => setState(() => selectedFilter = value),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 6),
-        padding: const EdgeInsets.symmetric(
-            horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: active ? Colors.green : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: Text(label,
+            style: TextStyle(
+              color: active ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold,
+            )),
       ),
     );
   }
