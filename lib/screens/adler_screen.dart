@@ -105,7 +105,7 @@ class _AdlerScreenState extends State<AdlerScreen> {
   }
 
   //--------------------------------------------------
- Future<void> _saveData() async {
+Future<void> _saveData() async {
 
   print("🔥 SAVE START");
   print("📍 Location: ${widget.locationId}");
@@ -125,8 +125,22 @@ class _AdlerScreenState extends State<AdlerScreen> {
       "results": current['results'],
       "participants": current['players'],
       "eventType": selectedEvent,
-      "lastUpdate": DateTime.now().toIso8601String(),
 
+      //--------------------------------------------------
+      // ✅ SERVER TIME = BESSER
+      //--------------------------------------------------
+      "lastUpdate": FieldValue.serverTimestamp(),
+
+    }, SetOptions(merge: true));
+
+    //--------------------------------------------------
+    // ✅ NEU: LOCATION LIVE STATUS
+    //--------------------------------------------------
+    await FirebaseFirestore.instance
+        .collection('locations')
+        .doc(widget.locationId)
+        .set({
+      "isLive": true,
     }, SetOptions(merge: true));
 
     print("✅ SAVE ERFOLGREICH");
@@ -173,20 +187,37 @@ class _AdlerScreenState extends State<AdlerScreen> {
     });
 
     await FirebaseFirestore.instance
-        .collection('adler_events')
-        .doc(widget.locationId)
-        .collection('events')
-        .doc(selectedEvent)
-        .set({
-      "isActive": false,
-      "shots": 0,
-      "kingName": null,
-      "results": {},
-      "participants": [],
-      "eventType": selectedEvent,
-      "lastUpdate": DateTime.now().toIso8601String(),
-    }, SetOptions(merge: true));
-  }
+    .collection('adler_events')
+    .doc(widget.locationId)
+    .collection('events')
+    .doc(selectedEvent)
+    .set({
+  "isActive": false,
+  "shots": 0,
+  "kingName": null,
+  "results": {},
+  "participants": [],
+  "eventType": selectedEvent,
+
+  //--------------------------------------------------
+  // ✅ SERVER TIME = BESSER
+  //--------------------------------------------------
+  "lastUpdate": FieldValue.serverTimestamp(),
+
+}, SetOptions(merge: true));
+
+//--------------------------------------------------
+// ✅ NEU: LIVE STATUS AUS
+//--------------------------------------------------
+
+  await FirebaseFirestore.instance
+      .collection('locations')
+      .doc(widget.locationId)
+      .set({
+    "isLive": false,
+  }, SetOptions(merge: true));
+}
+
 
   //--------------------------------------------------
   void _switchEvent(String type) {

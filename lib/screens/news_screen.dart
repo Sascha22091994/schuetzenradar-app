@@ -137,76 +137,81 @@ class _NewsScreenState extends State<NewsScreen> {
   //--------------------------------------------------
   // ✅ LIVE AUSWAHL (FIXED)
   //--------------------------------------------------
-  Future<void> _openLiveSelection() async {
+// NUR DIESE FUNKTION ERSETZEN
 
-    final locationsSnapshot =
-        await FirebaseFirestore.instance.collection('locations').get();
+Future<void> _openLiveSelection() async {
 
-    Map<String, bool> activeMap = {};
+  final locationsSnapshot =
+      await FirebaseFirestore.instance.collection('locations').get();
 
-    for (var doc in locationsSnapshot.docs) {
-      if (await _isLocationLive(doc.id)) {
-        activeMap[doc.id] = true;
-      }
-    }
+  //--------------------------------------------------
+  // ✅ PARALLEL STATT NACHEINANDER (FIX)
+  //--------------------------------------------------
+  final futures = locationsSnapshot.docs.map((doc) async {
+    final isLive = await _isLocationLive(doc.id);
+    return MapEntry(doc.id, isLive);
+  });
 
-    final docs = locationsSnapshot.docs;
+  final results = await Future.wait(futures);
 
-    final activeDocs =
-        docs.where((doc) => activeMap[doc.id] == true).toList();
+  final activeMap = Map.fromEntries(results);
 
-    final inactiveDocs =
-        docs.where((doc) => activeMap[doc.id] != true).toList();
+  final docs = locationsSnapshot.docs;
 
-    final sortedDocs = [...activeDocs, ...inactiveDocs];
+  final activeDocs =
+      docs.where((doc) => activeMap[doc.id] == true).toList();
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Ort auswählen"),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView(
-            children: [
+  final inactiveDocs =
+      docs.where((doc) => activeMap[doc.id] != true).toList();
 
-              if (activeDocs.isNotEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 8),
-                  child: Text("🔴 LIVE AKTUELL", style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
+  final sortedDocs = [...activeDocs, ...inactiveDocs];
 
-              ...sortedDocs.map((doc) {
-                final isActive = activeMap[doc.id] == true;
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text("Ort auswählen"),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView(
+          children: [
 
-                return Card(
-                  color: isActive ? Colors.green.shade50 : null,
-                  child: ListTile(
-                    title: Text(doc['name'] ?? ""),
-                    subtitle: isActive
-                        ? const Text("🔥 Live aktiv")
-                        : const Text("Keine aktuellen Daten"),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AdlerLiveScreen(
-                            locationId: doc.id,
-                            locationName: doc['name'] ?? "",
-                          ),
+            if (activeDocs.isNotEmpty)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text("🔴 LIVE AKTUELL", style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+
+            ...sortedDocs.map((doc) {
+              final isActive = activeMap[doc.id] == true;
+
+              return Card(
+                color: isActive ? Colors.green.shade50 : null,
+                child: ListTile(
+                  title: Text(doc['name'] ?? ""),
+                  subtitle: isActive
+                      ? const Text("🔥 Live aktiv")
+                      : const Text("Keine aktuellen Daten"),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AdlerLiveScreen(
+                          locationId: doc.id,
+                          locationName: doc['name'] ?? "",
                         ),
-                      );
-                    },
-                  ),
-                );
-              }),
-            ],
-          ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            }),
+          ],
         ),
       ),
-    );
-  }
-
+    ),
+  );
+}
   //--------------------------------------------------
   String _formatDate(DateTime d) {
     return "${d.day}.${d.month}.${d.year}";
