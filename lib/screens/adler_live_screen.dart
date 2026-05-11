@@ -26,7 +26,7 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
   String? viewerId;
 
   //--------------------------------------------------
-  // ✅ NEU: CACHE FÜR STABILE DATEN
+  // CACHE
   //--------------------------------------------------
   final Map<String, Map<String, dynamic>> _lastValidData = {};
 
@@ -54,10 +54,9 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
   }
 
   //--------------------------------------------------
-  // VIEWER SYSTEM (unverändert)
+  // VIEWER SYSTEM
   //--------------------------------------------------
   Future<void> _registerViewer() async {
-
     final ref = FirebaseFirestore.instance
         .collection('adler_viewers')
         .doc(widget.locationId)
@@ -66,9 +65,8 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
     viewerId = ref.id;
 
-    final statsRef = FirebaseFirestore.instance
-        .collection('adler_stats')
-        .doc(widget.locationId);
+    final statsRef =
+        FirebaseFirestore.instance.collection('adler_stats').doc(widget.locationId);
 
     await FirebaseFirestore.instance.runTransaction((tx) async {
 
@@ -76,21 +74,11 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
         "joinedAt": FieldValue.serverTimestamp(),
       });
 
-      final statsSnap = await tx.get(statsRef);
+      final snap = await tx.get(statsRef);
 
-      int current = 0;
-      int peak = 0;
-      int total = 0;
-
-      if (statsSnap.exists) {
-        final data = statsSnap.data()!;
-        current = data['current'] ?? 0;
-        peak = data['peak'] ?? 0;
-        total = data['total'] ?? 0;
-      }
-
-      current++;
-      total++;
+      int current = (snap.data()?['current'] ?? 0) + 1;
+      int peak = snap.data()?['peak'] ?? 0;
+      int total = (snap.data()?['total'] ?? 0) + 1;
 
       if (current > peak) peak = current;
 
@@ -111,22 +99,19 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
         .collection('users')
         .doc(viewerId);
 
-    final statsRef = FirebaseFirestore.instance
-        .collection('adler_stats')
-        .doc(widget.locationId);
+    final statsRef =
+        FirebaseFirestore.instance.collection('adler_stats').doc(widget.locationId);
 
     await FirebaseFirestore.instance.runTransaction((tx) async {
 
       tx.delete(ref);
 
-      final statsSnap = await tx.get(statsRef);
+      final snap = await tx.get(statsRef);
 
-      if (statsSnap.exists) {
-        int current = statsSnap.data()!['current'] ?? 0;
-        if (current > 0) current--;
+      int current = snap.data()?['current'] ?? 0;
+      if (current > 0) current--;
 
-        tx.set(statsRef, {"current": current}, SetOptions(merge: true));
-      }
+      tx.set(statsRef, {"current": current}, SetOptions(merge: true));
     });
   }
 
@@ -144,7 +129,7 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
         onTap: () => setState(() => viewMode = value),
         child: Container(
           margin: const EdgeInsets.all(6),
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: active ? Colors.green : Colors.grey.shade800,
             borderRadius: BorderRadius.circular(12),
@@ -153,7 +138,6 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 18,
                 color: active ? Colors.white : Colors.grey,
                 fontWeight: FontWeight.bold,
               ),
@@ -175,190 +159,154 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
           .snapshots(),
       builder: (context, snapshot) {
 
-        //--------------------------------------------------
-        // ✅ LOADING STATE
-        //--------------------------------------------------
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            !_lastValidData.containsKey(eventType)) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-
-        //--------------------------------------------------
-        // ✅ NEUE DATEN
-        //--------------------------------------------------
         if (snapshot.hasData && snapshot.data!.exists) {
-
-          final newData =
-              snapshot.data!.data() as Map<String, dynamic>;
-
-          final valid = newData.isNotEmpty;
-              (newData['participants'] != null &&
-                  (newData['participants'] as List).isNotEmpty);
-
-          if (valid) {
+          final newData = snapshot.data!.data() as Map<String, dynamic>;
+          if (newData.isNotEmpty) {
             _lastValidData[eventType] = newData;
           }
         }
 
-        //--------------------------------------------------
-        // ✅ CACHE VERWENDEN
-        //--------------------------------------------------
         final data = _lastValidData[eventType] ?? {};
 
         final shots = data['shots'] ?? 0;
         final king = data['kingName'];
-        final results =
-            Map<String, dynamic>.from(data['results'] ?? {});
-        final participants =
-            (data['participants'] as List?) ?? [];
+        final participants = (data['participants'] as List?) ?? [];
+        final results = Map<String, dynamic>.from(data['results'] ?? {});
 
         final sorted = results.entries.toList()
           ..sort((a, b) =>
-              (b.value['order'] ?? 0)
-                  .compareTo(a.value['order'] ?? 0));
+              (b.value['order'] ?? 0).compareTo(a.value['order'] ?? 0));
 
-        final now = DateTime.now();
-
-        return Stack(
+        return Column(
           children: [
-            Column(
-              children: [
 
-                //--------------------------------------------------
-                // HEADER
-                //--------------------------------------------------
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
+            //--------------------------------------------------
+            // HEADER
+            //--------------------------------------------------
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text("LIVE",
-                              style: TextStyle(
-                                  fontSize: 22,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
-                          const SizedBox(width: 8),
-                          ScaleTransition(
-                            scale: _pulse,
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text("Schüsse: $shots",
-                          style: const TextStyle(
-                              fontSize: 26,
+                      const Text("LIVE",
+                          style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold)),
-                      Text(_formatTime(now),
-                          style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.white70)),
+                      const SizedBox(width: 6),
+                      ScaleTransition(
+                        scale: _pulse,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ),
+                  Text("Schüsse: $shots",
+                      style: const TextStyle(
+                          fontSize: 22,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
 
-                //--------------------------------------------------
-                // TEILNEHMER
-                //--------------------------------------------------
-                if (participants.isNotEmpty)
-                  Wrap(
-                    spacing: 8,
-                    children: participants
-                        .map((p) => Chip(label: Text(p)))
-                        .toList(),
-                  ),
+            //--------------------------------------------------
+            // TEILNEHMER
+            //--------------------------------------------------
+            if (participants.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                children: participants
+                    .map((p) => Chip(label: Text(p)))
+                    .toList(),
+              ),
 
-                //--------------------------------------------------
-                // KÖNIG
-                //--------------------------------------------------
-                if (king != null)
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.all(12),
-                    padding: const EdgeInsets.all(14),
-                    color: Colors.amber,
-                    child: Text("👑 $king",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold)),
-                  ),
+            //--------------------------------------------------
+            // KÖNIG
+            //--------------------------------------------------
+            if (king != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.all(12),
+                color: Colors.amber,
+                child: Text("👑 $king",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold)),
+              ),
 
-                //--------------------------------------------------
-                // LISTE
-                //--------------------------------------------------
-                Expanded(
-                  child: data.isEmpty
-                      ? const Center(
-                          child: Text("Warte auf Live Daten...",
-                              style: TextStyle(color: Colors.white)),
-                        )
-                      : ListView(
-                          children: sorted.map((entry) {
+            //--------------------------------------------------
+            // LISTE (MOBILE FIX)
+            //--------------------------------------------------
+            Expanded(
+              child: data.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "Warte auf Live Daten...",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    )
+                  : ListView(
+                      children: sorted.map((entry) {
 
-                            final part = entry.key;
-                            final r = entry.value;
+                        final part = entry.key;
+                        final r = entry.value;
 
-                            final time = r['time'] != null
-                                ? _formatTime(
-                                    DateTime.parse(r['time']))
-                                : "--:--";
+                        final time = r['time'] != null
+                            ? _formatTime(DateTime.parse(r['time']))
+                            : "--:--";
 
-                            return Container(
-                              margin: const EdgeInsets.all(6),
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade900,
-                                borderRadius:
-                                    BorderRadius.circular(12),
-                              ),
-                              child: Row(
+                        return Container(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          padding: const EdgeInsets.all(12),
+
+                          //--------------------------------------------------
+                          // ✅ BONUS HIGHLIGHT
+                          //--------------------------------------------------
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade900,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.greenAccent.withOpacity(0.3),
+                            ),
+                          ),
+
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
-                                    flex: 3,
                                     child: Text(part,
                                         style: const TextStyle(
-                                            fontSize: 20,
                                             color: Colors.white,
-                                            fontWeight:
-                                                FontWeight.bold)),
-                                  ),
-                                  Expanded(
-                                    flex: 3,
-                                    child: Text(r['name'] ?? "",
-                                        style: const TextStyle(
-                                            color: Colors.white)),
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Text(time,
-                                        style: const TextStyle(
-                                            color:
-                                                Colors.white70)),
+                                            fontWeight: FontWeight.bold)),
                                   ),
                                   Text("${r['shots']}",
                                       style: const TextStyle(
-                                          color:
-                                              Colors.greenAccent)),
+                                          color: Colors.greenAccent)),
                                 ],
                               ),
-                            );
-                          }).toList(),
-                        ),
-                )
-              ],
-            ),
+                              const SizedBox(height: 4),
+                              Text("${r['name']} • $time",
+                                  style:
+                                      const TextStyle(color: Colors.white70)),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+            )
           ],
         );
       },
@@ -378,12 +326,11 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
         children: [
           Row(
             children: [
-              _modeButton("Jungschütze", "jung"),
-              _modeButton("Altschütze", "alt"),
-              _modeButton("Beide", "split"),
+              _modeButton("Jung", "jung"),
+              _modeButton("Alt", "alt"),
+              _modeButton("Split", "split"),
             ],
           ),
-
           Expanded(
             child: viewMode == "split"
                 ? Row(

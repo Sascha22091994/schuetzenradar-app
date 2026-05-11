@@ -36,12 +36,12 @@ class _AdlerScreenState extends State<AdlerScreen> {
   };
 
   final List<String> parts = [
-    "Krone 👑",
-    "Zepter ⚜️",
-    "Reichsapfel 🌍",
-    "Flügel links 🪽",
-    "Flügel rechts 🪽",
-    "Adler 🦅",
+"Krone 👑",
+"Zepter ⚜️",
+"Reichsapfel 🍎",
+"Flügel links 🕊️",
+"Flügel rechts 🕊️",
+"Adler 🦅",
   ];
 
   String _formatTime(DateTime time) {
