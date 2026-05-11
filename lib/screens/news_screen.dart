@@ -277,59 +277,113 @@ class _NewsScreenState extends State<NewsScreen> {
 
               const SizedBox(height: 10),
 
-              //--------------------------------------------------
-              // LIVE CARD
-              //--------------------------------------------------
-              FutureBuilder(
-                future: FirebaseFirestore.instance.collection('adler_events').get(),
-                builder: (context, snapshot) {
+        //--------------------------------------------------
+// LIVE CARD (FIXED + AUFFÄLLIG)
+//--------------------------------------------------
+FutureBuilder(
+  future: FirebaseFirestore.instance.collection('locations').get(),
+  builder: (context, snapshot) {
 
-                  if (!snapshot.hasData) return const SizedBox();
+    if (!snapshot.hasData) return const SizedBox();
 
-                  final docs = snapshot.data!.docs;
+    final docs = snapshot.data!.docs;
 
-                  return FutureBuilder(
-                    future: Future.wait(docs.map((d) => _isLocationLive(d.id))),
-                    builder: (context, liveSnap) {
+    return FutureBuilder(
+      future: Future.wait(
+        docs.map((doc) => _isLocationLive(doc.id)),
+      ),
+      builder: (context, liveSnap) {
 
-                      if (!liveSnap.hasData) return const SizedBox();
+        if (!liveSnap.hasData) return const SizedBox();
 
-                      final results = liveSnap.data as List<bool>;
-                      final hasLive = results.contains(true);
+        final results = liveSnap.data as List<bool>;
+        final hasLive = results.contains(true);
 
-                      return Card(
-                        color: hasLive
-                            ? (theme.brightness == Brightness.dark
-                                ? Colors.red.shade900
-                                : Colors.red.shade100)
-                            : null,
-                        child: ListTile(
-                          leading: Icon(
-                            Icons.visibility,
-                            color: hasLive ? Colors.red : Colors.grey,
-                          ),
-                          title: Text(
-                            "Adlerschießen verfolgen",
-                            style: TextStyle(
-                              color: theme.colorScheme.onSurface,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          subtitle: Text(
-                            hasLive
-                                ? "🔥 Gerade aktiv!"
-                                : "Momentan kein Live Event",
-                            style: TextStyle(
-                                color: theme.colorScheme.onSurface),
-                          ),
-                          trailing: const Icon(Icons.arrow_forward_ios),
-                          onTap: _openLiveSelection,
-                        ),
-                      );
-                    },
-                  );
-                },
+        return Card(
+          elevation: hasLive ? 6 : 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: hasLive
+                ? BorderSide(color: Colors.redAccent, width: 2)
+                : BorderSide.none,
+          ),
+
+          //--------------------------------------------------
+          // ✅ DEUTLICH SICHTBAR
+          //--------------------------------------------------
+          color: hasLive
+              ? (theme.brightness == Brightness.dark
+                  ? Colors.red.shade800
+                  : Colors.red.shade200)
+              : null,
+
+          child: ListTile(
+            leading: Icon(
+              Icons.visibility,
+              size: 28,
+              color: hasLive ? Colors.redAccent : Colors.grey,
+            ),
+
+            //--------------------------------------------------
+            // ✅ LIVE BADGE IM TITEL
+            //--------------------------------------------------
+            title: Row(
+              children: [
+                Text(
+                  "Adlerschießen verfolgen",
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
+                    fontSize: hasLive ? 17 : 15,
+                  ),
+                ),
+
+                if (hasLive)
+                  Container(
+                    margin: const EdgeInsets.only(left: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      "LIVE",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            //--------------------------------------------------
+            // ✅ TEXT
+            //--------------------------------------------------
+            subtitle: Text(
+              hasLive
+                  ? "🔥 Gerade aktiv! Jetzt reinschauen!"
+                  : "Momentan kein Live Event",
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
+                fontWeight: hasLive ? FontWeight.bold : FontWeight.normal,
               ),
+            ),
+
+            trailing: const Icon(Icons.arrow_forward_ios),
+
+            //--------------------------------------------------
+            // ✅ CLICK
+            //--------------------------------------------------
+            onTap: _openLiveSelection,
+          ),
+        );
+      },
+    );
+  },
+),
 
               //--------------------------------------------------
               // NEWS LIST
