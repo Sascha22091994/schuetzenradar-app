@@ -141,62 +141,77 @@ class _AdlerScreenState extends State<AdlerScreen> {
   //--------------------------------------------------
   // ✅ RESET FIXED
   //--------------------------------------------------
-  Future<void> _resetGame() async {
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Reset?"),
-        content: const Text("Wirklich alles löschen?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Abbrechen"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
+//--------------------------------------------------
+// ✅ RESET FINAL FIXED
+//--------------------------------------------------
+Future<void> _resetGame() async {
 
-    if (confirm != true) return;
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text("Reset?"),
+      content: const Text("Wirklich alles löschen?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text("Abbrechen"),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text("OK"),
+        ),
+      ],
+    ),
+  );
 
-    setState(() {
-      current['results'].clear();
-      current['shots'] = 0;
-      current['kingName'] = null;
-      current['players'].clear();
-    });
-
-    await FirebaseFirestore.instance
-        .collection('adler_events')
-        .doc(widget.locationId)
-        .collection('events')
-        .doc(selectedEvent)
-        .set({
-      "isActive": false,
-      "shots": 0,
-      "kingName": null,
-      "results": {},
-      "participants": [],
-    }, SetOptions(merge: true));
-
-    await FirebaseFirestore.instance
-        .collection('locations')
-        .doc(widget.locationId)
-        .set({
-      "isLive": false,
-    }, SetOptions(merge: true));
-  }
+  if (confirm != true) return;
 
   //--------------------------------------------------
-  void _switchEvent(String type) {
-    setState(() {
-      selectedEvent = type;
-    });
-  }
+  // ✅ LOCAL STATE RESET
+  //--------------------------------------------------
+  setState(() {
+    current['results'].clear();
+    current['shots'] = 0;
+    current['kingName'] = null;
+    current['players'].clear();
+  });
+
+  //--------------------------------------------------
+  // ✅ FIRESTORE HARD RESET (WICHTIG!)
+  //--------------------------------------------------
+  await FirebaseFirestore.instance
+      .collection('adler_events')
+      .doc(widget.locationId)
+      .collection('events')
+      .doc(selectedEvent)
+      .set({
+    "isActive": false,
+    "shots": 0,
+    "kingName": null,
+    "results": {},
+    "participants": [],
+    "eventType": selectedEvent,
+    "lastUpdate": FieldValue.serverTimestamp(),
+  }, SetOptions(merge: false)); // ✅ 🔥 HIER IST DER FIX
+
+  //--------------------------------------------------
+  // ✅ GLOBAL LIVE AUS
+  //--------------------------------------------------
+  await FirebaseFirestore.instance
+      .collection('locations')
+      .doc(widget.locationId)
+      .set({
+    "isLive": false,
+  }, SetOptions(merge: true));
+}
+
+//--------------------------------------------------
+void _switchEvent(String type) {
+  setState(() {
+    selectedEvent = type;
+  });
+}
 
   //--------------------------------------------------
   @override

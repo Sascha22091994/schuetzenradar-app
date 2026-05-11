@@ -25,95 +25,131 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
   String? viewerId;
 
-  //--------------------------------------------------
-  // CACHE
-  //--------------------------------------------------
-  final Map<String, Map<String, dynamic>> _lastValidData = {};
+//--------------------------------------------------
+// ✅ CACHE
+//--------------------------------------------------
+final Map<String, Map<String, dynamic>> _lastValidData = {};
 
-  @override
-  void initState() {
-    super.initState();
+@override
+void initState() {
+  super.initState();
 
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+  _pulseController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
 
-    _pulse = Tween(begin: 0.8, end: 1.2).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+  _pulse = Tween(begin: 0.8, end: 1.2).animate(
+    CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+  );
 
-    _registerViewer();
-  }
+  _registerViewer();
+}
 
-  @override
-  void dispose() {
-    _removeViewer();
-    _pulseController.dispose();
-    super.dispose();
-  }
+@override
+void dispose() {
 
   //--------------------------------------------------
-  // VIEWER SYSTEM
+  // ✅ CACHE KOMPLETT LEEREN (WICHTIG!)
   //--------------------------------------------------
-  Future<void> _registerViewer() async {
-    final ref = FirebaseFirestore.instance
-        .collection('adler_viewers')
-        .doc(widget.locationId)
-        .collection('users')
-        .doc();
+  _lastValidData.clear();
 
-    viewerId = ref.id;
+  _removeViewer();
+  _pulseController.dispose();
+  super.dispose();
+}
 
-    final statsRef =
-        FirebaseFirestore.instance.collection('adler_stats').doc(widget.locationId);
+//--------------------------------------------------
+// VIEWER SYSTEM (FIXED)
+//--------------------------------------------------
+Future<void> _registerViewer() async {
 
-    await FirebaseFirestore.instance.runTransaction((tx) async {
+  //--------------------------------------------------
+  // ✅ CHECK: IST EVENT ÜBERHAUPT AKTIV?
+  //--------------------------------------------------
+  final jungDoc = await FirebaseFirestore.instance
+      .collection('adler_events')
+      .doc(widget.locationId)
+      .collection('events')
+      .doc('jung')
+      .get();
 
-      tx.set(ref, {
-        "joinedAt": FieldValue.serverTimestamp(),
-      });
+  final altDoc = await FirebaseFirestore.instance
+      .collection('adler_events')
+      .doc(widget.locationId)
+      .collection('events')
+      .doc('alt')
+      .get();
 
-      final snap = await tx.get(statsRef);
+  final isActive =
+      (jungDoc.data()?['isActive'] == true) ||
+      (altDoc.data()?['isActive'] == true);
 
-      int current = (snap.data()?['current'] ?? 0) + 1;
-      int peak = snap.data()?['peak'] ?? 0;
-      int total = (snap.data()?['total'] ?? 0) + 1;
+  //--------------------------------------------------
+  // ❌ NICHT AKTIV → KEIN VIEWER TRACKING
+  //--------------------------------------------------
+  if (!isActive) return;
 
-      if (current > peak) peak = current;
+  //--------------------------------------------------
+  // ✅ NORMAL WEITER
+  //--------------------------------------------------
+  final ref = FirebaseFirestore.instance
+      .collection('adler_viewers')
+      .doc(widget.locationId)
+      .collection('users')
+      .doc();
 
-      tx.set(statsRef, {
-        "current": current,
-        "peak": peak,
-        "total": total,
-      }, SetOptions(merge: true));
+  viewerId = ref.id;
+
+  final statsRef =
+      FirebaseFirestore.instance.collection('adler_stats').doc(widget.locationId);
+
+  await FirebaseFirestore.instance.runTransaction((tx) async {
+
+    tx.set(ref, {
+      "joinedAt": FieldValue.serverTimestamp(),
     });
-  }
 
-  Future<void> _removeViewer() async {
-    if (viewerId == null) return;
+    final snap = await tx.get(statsRef);
 
-    final ref = FirebaseFirestore.instance
-        .collection('adler_viewers')
-        .doc(widget.locationId)
-        .collection('users')
-        .doc(viewerId);
+    int current = (snap.data()?['current'] ?? 0) + 1;
+    int peak = snap.data()?['peak'] ?? 0;
+    int total = (snap.data()?['total'] ?? 0) + 1;
 
-    final statsRef =
-        FirebaseFirestore.instance.collection('adler_stats').doc(widget.locationId);
+    if (current > peak) peak = current;
 
-    await FirebaseFirestore.instance.runTransaction((tx) async {
+    tx.set(statsRef, {
+      "current": current,
+      "peak": peak,
+      "total": total,
+    }, SetOptions(merge: true));
+  });
+}
 
-      tx.delete(ref);
+Future<void> _removeViewer() async {
+  if (viewerId == null) return;
 
-      final snap = await tx.get(statsRef);
+  final ref = FirebaseFirestore.instance
+      .collection('adler_viewers')
+      .doc(widget.locationId)
+      .collection('users')
+      .doc(viewerId);
 
-      int current = snap.data()?['current'] ?? 0;
-      if (current > 0) current--;
+  final statsRef =
+      FirebaseFirestore.instance.collection('adler_stats').doc(widget.locationId);
 
-      tx.set(statsRef, {"current": current}, SetOptions(merge: true));
-    });
-  }
+  await FirebaseFirestore.instance.runTransaction((tx) async {
+
+    tx.delete(ref);
+
+    final snap = await tx.get(statsRef);
+
+    int current = snap.data()?['current'] ?? 0;
+    if (current > 0) current--;
+
+    tx.set(statsRef, {"current": current}, SetOptions(merge: true));
+  });
+}
 
   //--------------------------------------------------
   String _formatTime(DateTime t) {
@@ -161,9 +197,15 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
         if (snapshot.hasData && snapshot.data!.exists) {
           final newData = snapshot.data!.data() as Map<String, dynamic>;
-          if (newData.isNotEmpty) {
-            _lastValidData[eventType] = newData;
-          }
+          
+final isActive = newData['isActive'] == true;
+
+if (isActive) {
+  _lastValidData[eventType] = newData;
+} else {
+  _lastValidData.remove(eventType); // ✅ FINAL FIX
+}
+
         }
 
         final data = _lastValidData[eventType] ?? {};
