@@ -58,9 +58,10 @@ class _AdlerScreenState extends State<AdlerScreen> {
   }
 
   //--------------------------------------------------
-  // ✅ FIX: isActive reset wenn KEINE Spieler
+  // ✅ FIXED LOAD (KEINE AUTO-WRITES MEHR!)
   //--------------------------------------------------
   Future<void> _loadBothEvents() async {
+
     for (var event in ["jung", "alt"]) {
 
       final doc = await FirebaseFirestore.instance
@@ -70,88 +71,68 @@ class _AdlerScreenState extends State<AdlerScreen> {
           .doc(event)
           .get();
 
-      if (doc.exists) {
-        final data = doc.data()!;
+      if (!doc.exists) continue;
 
-        final players = List<String>.from(data['participants'] ?? []);
+      final data = doc.data() as Map<String, dynamic>;
 
-        eventData[event] = {
-          "shots": data['shots'] ?? 0,
-          "kingName": data['kingName'],
-          "results": Map<String, dynamic>.from(
-            (data['results'] ?? {}).map((k, v) =>
-                MapEntry(k.toString(), Map<String, dynamic>.from(v))),
-          ),
-          "players": players,
-        };
+      final players = List<String>.from(data['participants'] ?? []);
 
-        //--------------------------------------------------
-        // ✅ WICHTIG: wenn keine Spieler → nicht aktiv
-        //--------------------------------------------------
-        if (players.isEmpty && data['isActive'] == true) {
-          await FirebaseFirestore.instance
-              .collection('adler_events')
-              .doc(widget.locationId)
-              .collection('events')
-              .doc(event)
-              .set({
-            "isActive": false,
-          }, SetOptions(merge: true));
-        }
-      }
+      eventData[event] = {
+        "shots": data['shots'] ?? 0,
+        "kingName": data['kingName'],
+        "results": Map<String, dynamic>.from(
+          (data['results'] ?? {}).map((k, v) =>
+              MapEntry(k.toString(), Map<String, dynamic>.from(v))),
+        ),
+        "players": players,
+      };
     }
 
     setState(() {});
   }
 
   //--------------------------------------------------
-Future<void> _saveData() async {
+  // ✅ FIXED SAVE (STABIL + KEINE FEHLER)
+  //--------------------------------------------------
+  Future<void> _saveData() async {
 
-  print("🔥 SAVE START");
-  print("📍 Location: ${widget.locationId}");
-  print("🎯 Event: $selectedEvent");
+    try {
 
-  try {
-    await FirebaseFirestore.instance
-        .collection('adler_events')
-        .doc(widget.locationId)
-        .collection('events')
-        .doc(selectedEvent)
-        .set({
+      if (selectedEvent != "jung" && selectedEvent != "alt") return;
 
-      "isActive": true,
-      "shots": current['shots'],
-      "kingName": current['kingName'],
-      "results": current['results'],
-      "participants": current['players'],
-      "eventType": selectedEvent,
+      await FirebaseFirestore.instance
+          .collection('adler_events')
+          .doc(widget.locationId)
+          .collection('events')
+          .doc(selectedEvent)
+          .set({
 
-      //--------------------------------------------------
-      // ✅ SERVER TIME = BESSER
-      //--------------------------------------------------
-      "lastUpdate": FieldValue.serverTimestamp(),
+        "isActive": true,
+        "shots": current['shots'] ?? 0,
+        "kingName": current['kingName'],
+        "results": current['results'] ?? {},
+        "participants": current['players'] ?? [],
+        "eventType": selectedEvent,
+        "lastUpdate": FieldValue.serverTimestamp(),
 
-    }, SetOptions(merge: true));
+      }, SetOptions(merge: true));
 
-    //--------------------------------------------------
-    // ✅ NEU: LOCATION LIVE STATUS
-    //--------------------------------------------------
-    await FirebaseFirestore.instance
-        .collection('locations')
-        .doc(widget.locationId)
-        .set({
-      "isLive": true,
-    }, SetOptions(merge: true));
+      await FirebaseFirestore.instance
+          .collection('locations')
+          .doc(widget.locationId)
+          .set({
+        "isLive": true,
+      }, SetOptions(merge: true));
 
-    print("✅ SAVE ERFOLGREICH");
-
-  } catch (e) {
-    print("❌ FEHLER BEIM SPEICHERN: $e");
+    } catch (e) {
+      print("❌ SAVE ERROR: $e");
+    }
   }
-}
+
   //--------------------------------------------------
   Future<void> _addPlayer() async {
     final name = nameController.text.trim();
+
     if (name.isEmpty || current['players'].contains(name)) return;
 
     setState(() {
@@ -187,35 +168,27 @@ Future<void> _saveData() async {
     });
 
     await FirebaseFirestore.instance
-    .collection('adler_events')
+        .collection('adler_events')
+        .doc(widget.locationId)
+        .collection('events')
+        .doc(selectedEvent)
+        .set({
+      "isActive": false,
+      "shots": 0,
+      "kingName": null,
+      "results": {},
+      "participants": [],
+      "eventType": selectedEvent,
+      "lastUpdate": FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+ await FirebaseFirestore.instance
+    .collection('locations')
     .doc(widget.locationId)
-    .collection('events')
-    .doc(selectedEvent)
     .set({
-  "isActive": false,
-  "shots": 0,
-  "kingName": null,
-  "results": {},
-  "participants": [],
-  "eventType": selectedEvent,
+  "isLive": false,
+}, SetOptions(merge: true)); // ✅ richtige Klammer!
 
-  //--------------------------------------------------
-  // ✅ SERVER TIME = BESSER
-  //--------------------------------------------------
-  "lastUpdate": FieldValue.serverTimestamp(),
-
-}, SetOptions(merge: true));
-
-//--------------------------------------------------
-// ✅ NEU: LIVE STATUS AUS
-//--------------------------------------------------
-
-  await FirebaseFirestore.instance
-      .collection('locations')
-      .doc(widget.locationId)
-      .set({
-    "isLive": false,
-  }, SetOptions(merge: true));
 }
 
 
@@ -248,6 +221,9 @@ Future<void> _saveData() async {
         child: Column(
           children: [
 
+            //--------------------------------------------------
+            // EVENT SWITCH
+            //--------------------------------------------------
             Row(
               children: [
                 Expanded(
@@ -279,6 +255,9 @@ Future<void> _saveData() async {
 
             const SizedBox(height: 10),
 
+            //--------------------------------------------------
+            // PLAYER INPUT
+            //--------------------------------------------------
             Row(
               children: [
                 Expanded(
@@ -305,6 +284,9 @@ Future<void> _saveData() async {
 
             const SizedBox(height: 10),
 
+            //--------------------------------------------------
+            // SHOTS
+            //--------------------------------------------------
             Card(
               color: Colors.green.shade100,
               child: ListTile(
@@ -321,6 +303,9 @@ Future<void> _saveData() async {
               ),
             ),
 
+            //--------------------------------------------------
+            // RESULTS
+            //--------------------------------------------------
             Expanded(
               child: ListView(
                 children: parts.map((part) {
