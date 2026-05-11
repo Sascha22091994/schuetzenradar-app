@@ -164,12 +164,20 @@ class _HomeScreenState extends State<HomeScreen> {
 //--------------------------------------------------
 // ✅ TAXI BUTTON (NEU)
  //--------------------------------------------------
+
+//--------------------------------------------------
+// 🚕 TAXI FEATURE CARD
+//--------------------------------------------------
+//--------------------------------------------------
+// 🚕 TAXI QUICK ACTION (SCHMAL + GELB)
+//--------------------------------------------------
 Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 12),
+  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
   child: Align(
     alignment: Alignment.centerLeft,
-    child: ElevatedButton.icon(
-      onPressed: () {
+    child: InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -177,11 +185,49 @@ Padding(
           ),
         );
       },
-      icon: const Icon(Icons.local_taxi),
-      label: const Text("Taxis im Kreis"),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFC107), // Taxi Gelb
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 6,
+            )
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min, // 🔥 macht ihn schmal!
+          children: [
+
+            const Icon(Icons.local_taxi, color: Colors.black),
+
+            const SizedBox(width: 8),
+
+            const Text(
+              "Taxi",
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(width: 6),
+
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: Colors.black,
+            ),
+          ],
+        ),
+      ),
     ),
   ),
 ),
+
+
               //--------------------------------------------------
               // LISTE
               //--------------------------------------------------

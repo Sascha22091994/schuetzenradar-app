@@ -84,6 +84,21 @@ class LegalScreen extends StatelessWidget {
             "Weitere Informationen:\n",
           ),
 
+const SizedBox(height: 20),
+
+const Text(
+  "💸 Spendenhinweis\n\n"
+
+  "In dieser App besteht die Möglichkeit, den Entwickler freiwillig "
+  "über einen externen Dienst (PayPal) zu unterstützen.\n\n"
+
+  "Es handelt sich dabei um freiwillige Spenden ohne Gegenleistung.\n"
+  "Es werden keine digitalen Inhalte oder Funktionen verkauft.\n\n"
+
+  "Die Zahlungsabwicklung erfolgt ausschließlich über PayPal. "
+  "Es gelten die Datenschutzbestimmungen von PayPal.",
+),
+
           //--------------------------------------------------
           // ✅ LINK ZU GITHUB PRIVACY
           //--------------------------------------------------

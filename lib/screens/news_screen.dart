@@ -273,24 +273,34 @@ Future<void> _openLiveSelection() async {
             padding: const EdgeInsets.all(12),
             children: [
 
-              if (_showInfo)
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Stack(
-                    children: [
-                      const Text('🚀 Community News Plattform\n\n✔ Infos\n✔ Live Updates\n✔ Highlights'),
-                      Positioned(
-                        right: 0,
-                        child: GestureDetector(onTap: _hideInfo, child: const Icon(Icons.close)),
-                      ),
-                    ],
-                  ),
-                ),
+if (_showInfo)
+  Container(
+    padding: const EdgeInsets.all(14),
+    margin: const EdgeInsets.only(bottom: 12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFE8F5E9),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Stack(
+      children: [
+        const Text(
+          "📢 NEWS & COMMUNITY\n\n"
+          "Hier findest du:\n\n"
+          "🔥 Aktuelle Infos von Schützenfesten\n"
+          "⚡ Live Updates (z.B. Adlerschießen)\n"
+          "⭐ Wichtige Highlights aus der Region\n\n"
+          "👉 Du hast Infos? Sende sie uns!",
+        ),
+        Positioned(
+          right: 0,
+          child: GestureDetector(
+            onTap: _hideInfo,
+            child: const Icon(Icons.close),
+          ),
+        ),
+      ],
+    ),
+  ),
 
               SizedBox(
                 height: 50,

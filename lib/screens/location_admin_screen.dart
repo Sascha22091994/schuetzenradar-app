@@ -8,14 +8,27 @@ class LocationAdminScreen extends StatelessWidget {
   // ADD / EDIT DIALOG
   //--------------------------------------------------
   void _showDialog(BuildContext context, [DocumentSnapshot? doc]) {
-    final name = TextEditingController(
-        text: doc != null ? doc['name'] : '');
-    final instagram = TextEditingController(
-        text: doc != null ? doc['instagram'] : '');
-    final website = TextEditingController(
-        text: doc != null ? doc['website'] : '');
 
-    bool hasAdler = doc != null ? doc['hasAdler'] : false;
+    //--------------------------------------------------
+    // ✅ SAFE DATA MAP
+    //--------------------------------------------------
+    final data = doc != null
+        ? (doc.data() as Map<String, dynamic>)
+        : <String, dynamic>{};
+
+    final name = TextEditingController(
+      text: data['name'] ?? '',
+    );
+
+    final instagram = TextEditingController(
+      text: data['instagram'] ?? '',
+    );
+
+    final website = TextEditingController(
+      text: data['website'] ?? '',
+    );
+
+    bool hasAdler = data['hasAdler'] ?? false;
 
     showDialog(
       context: context,
@@ -33,14 +46,12 @@ class LocationAdminScreen extends StatelessWidget {
 
                 TextField(
                   controller: instagram,
-                  decoration:
-                      const InputDecoration(labelText: "Instagram"),
+                  decoration: const InputDecoration(labelText: "Instagram"),
                 ),
 
                 TextField(
                   controller: website,
-                  decoration:
-                      const InputDecoration(labelText: "Website"),
+                  decoration: const InputDecoration(labelText: "Website"),
                 ),
 
                 SwitchListTile(
@@ -58,9 +69,9 @@ class LocationAdminScreen extends StatelessWidget {
                 final id = name.text.toLowerCase().replaceAll(' ', '_');
 
                 if (doc == null) {
-                  //----------------------------------
+                  //--------------------------------------------------
                   // CREATE
-                  //----------------------------------
+                  //--------------------------------------------------
                   await FirebaseFirestore.instance
                       .collection('locations')
                       .doc(id)
@@ -71,9 +82,9 @@ class LocationAdminScreen extends StatelessWidget {
                     "hasAdler": hasAdler,
                   });
                 } else {
-                  //----------------------------------
+                  //--------------------------------------------------
                   // UPDATE
-                  //----------------------------------
+                  //--------------------------------------------------
                   await FirebaseFirestore.instance
                       .collection('locations')
                       .doc(doc.id)
@@ -118,14 +129,30 @@ class LocationAdminScreen extends StatelessWidget {
 
           final docs = snapshot.data!.docs;
 
+          if (docs.isEmpty) {
+            return const Center(
+              child: Text("Keine Orte vorhanden"),
+            );
+          }
+
           return ListView(
             children: docs.map((doc) {
+
+              //--------------------------------------------------
+              // ✅ SAFE DATA ACCESS
+              //--------------------------------------------------
+              final data = doc.data() as Map<String, dynamic>;
+
+              final name = data['name'] ?? 'Unbekannt';
+              final instagram = data['instagram'] ?? '';
+              final website = data['website'] ?? '';
+
               return Dismissible(
                 key: Key(doc.id),
 
-                //----------------------------------
+                //--------------------------------------------------
                 // DELETE
-                //----------------------------------
+                //--------------------------------------------------
                 onDismissed: (_) async {
                   await FirebaseFirestore.instance
                       .collection('locations')
@@ -141,13 +168,16 @@ class LocationAdminScreen extends StatelessWidget {
                 ),
 
                 child: ListTile(
-                  title: Text(doc['name']),
-                  subtitle: Text(
-                      "Instagram: ${doc['instagram']}\nWebsite: ${doc['website']}"),
+                  title: Text(name),
 
-                  //----------------------------------
+                  subtitle: Text(
+                    "Instagram: ${instagram.isEmpty ? '—' : instagram}\n"
+                    "Website: ${website.isEmpty ? '—' : website}",
+                  ),
+
+                  //--------------------------------------------------
                   // EDIT
-                  //----------------------------------
+                  //--------------------------------------------------
                   onTap: () => _showDialog(context, doc),
                 ),
               );
