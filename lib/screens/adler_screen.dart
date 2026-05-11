@@ -50,6 +50,25 @@ class _AdlerScreenState extends State<AdlerScreen> {
 
   Map<String, dynamic> get current => eventData[selectedEvent]!;
 
+  //--------------------------------------------------
+  // ✅ NEWS SYSTEM
+  //--------------------------------------------------
+  Future<void> _addNews({
+    required String title,
+    required String content,
+    required String type,
+    required bool isImportant,
+  }) async {
+    await FirebaseFirestore.instance.collection('news').add({
+      "title": title,
+      "content": content,
+      "date": DateTime.now().toIso8601String(),
+      "type": type,
+      "isImportant": isImportant,
+      "location": widget.locationName,
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -81,22 +100,46 @@ class _AdlerScreenState extends State<AdlerScreen> {
     setState(() {});
   }
 
+  //--------------------------------------------------
+  // ✅ FIX: ECHTER LIVE STATUS
+  //--------------------------------------------------
   Future<void> _saveData() async {
+
+    final isActive =
+        (current['shots'] ?? 0) > 0 ||
+        (current['players'] as List).isNotEmpty ||
+        (current['results'] as Map).isNotEmpty;
+
     await FirebaseFirestore.instance
         .collection('adler_events')
         .doc(widget.locationId)
         .collection('events')
         .doc(selectedEvent)
         .set({
+
+      "isActive": isActive,
       "shots": current['shots'],
       "kingName": current['kingName'],
       "results": current['results'],
       "participants": current['players'],
+      "eventType": selectedEvent,
+      "lastUpdate": FieldValue.serverTimestamp(),
+
+    }, SetOptions(merge: true));
+
+    //--------------------------------------------------
+    // ✅ GLOBAL LIVE (FIX)
+    //--------------------------------------------------
+    await FirebaseFirestore.instance
+        .collection('locations')
+        .doc(widget.locationId)
+        .set({
+      "isLive": isActive,
     }, SetOptions(merge: true));
   }
 
   //--------------------------------------------------
-  // ✅ RESET (NEU)
+  // ✅ RESET FIXED
   //--------------------------------------------------
   Future<void> _resetGame() async {
 
@@ -133,10 +176,18 @@ class _AdlerScreenState extends State<AdlerScreen> {
         .collection('events')
         .doc(selectedEvent)
         .set({
+      "isActive": false,
       "shots": 0,
       "kingName": null,
       "results": {},
       "participants": [],
+    }, SetOptions(merge: true));
+
+    await FirebaseFirestore.instance
+        .collection('locations')
+        .doc(widget.locationId)
+        .set({
+      "isLive": false,
     }, SetOptions(merge: true));
   }
 
@@ -269,10 +320,8 @@ class _AdlerScreenState extends State<AdlerScreen> {
                   ? Colors.green.shade900
                   : Colors.green.shade100,
               child: ListTile(
-                title: Text(
-                  "Schüsse: $shots",
-                  style: TextStyle(color: theme.colorScheme.onSurface),
-                ),
+                title: Text("Schüsse: $shots",
+                    style: TextStyle(color: theme.colorScheme.onSurface)),
                 trailing: IconButton(
                   icon: const Icon(Icons.add),
                   onPressed: () async {
@@ -292,10 +341,8 @@ class _AdlerScreenState extends State<AdlerScreen> {
                   final result = results[part];
 
                   return ListTile(
-                    title: Text(
-                      part,
-                      style: TextStyle(color: theme.colorScheme.onSurface),
-                    ),
+                    title: Text(part,
+                        style: TextStyle(color: theme.colorScheme.onSurface)),
                     subtitle: result != null
                         ? Text(
                             "${result['name']} • Schuss ${result['shots']} • ${_formatTime(DateTime.parse(result['time']))}",
@@ -305,13 +352,12 @@ class _AdlerScreenState extends State<AdlerScreen> {
                     trailing: result != null
                         ? const Icon(Icons.check, color: Colors.green)
                         : DropdownButton<String>(
-                            hint: Text(
-                              "Schütze",
-                              style: TextStyle(color: theme.colorScheme.onSurface),
-                            ),
+                            hint: Text("Schütze",
+                                style: TextStyle(color: theme.colorScheme.onSurface)),
                             items: players.map((p) =>
                                 DropdownMenuItem(value: p, child: Text(p))).toList(),
                             onChanged: (value) async {
+
                               if (value == null) return;
 
                               setState(() {
@@ -319,10 +365,31 @@ class _AdlerScreenState extends State<AdlerScreen> {
                                   "name": value,
                                   "shots": current['shots'],
                                   "time": DateTime.now().toIso8601String(),
+                                  "order": DateTime.now().millisecondsSinceEpoch,
                                 };
+
+                                if (part == "Adler 🦅") {
+                                  current['kingName'] = value;
+                                }
                               });
 
                               await _saveData();
+
+                              await _addNews(
+                                title: "🎯 Treffer: $part",
+                                content: "$value hat $part abgeschossen (${widget.locationName})",
+                                type: "live",
+                                isImportant: false,
+                              );
+
+                              if (part == "Adler 🦅") {
+                                await _addNews(
+                                  title: "👑 Neuer König!",
+                                  content: "$value ist König in ${widget.locationName}",
+                                  type: "highlight",
+                                  isImportant: true,
+                                );
+                              }
                             },
                           ),
                   );

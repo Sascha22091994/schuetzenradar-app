@@ -193,7 +193,7 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
           final newData =
               snapshot.data!.data() as Map<String, dynamic>;
 
-          final valid = (newData['shots'] ?? 0) > 0 ||
+          final valid = newData.isNotEmpty;
               (newData['participants'] != null &&
                   (newData['participants'] as List).isNotEmpty);
 

@@ -42,6 +42,8 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   //--------------------------------------------------
+  // ✅ LIVE CHECK
+  //--------------------------------------------------
   Future<bool> _isLocationLive(String locationId) async {
     final jung = await FirebaseFirestore.instance
         .collection('adler_events')
@@ -61,6 +63,8 @@ class _NewsScreenState extends State<NewsScreen> {
            (alt.data()?['isActive'] == true);
   }
 
+  //--------------------------------------------------
+  // ✅ LIVE AUSWAHL DIALOG
   //--------------------------------------------------
   Future<void> _openLiveSelection() async {
 
@@ -84,63 +88,66 @@ class _NewsScreenState extends State<NewsScreen> {
 
     final sortedDocs = [...activeDocs, ...inactiveDocs];
 
+    final theme = Theme.of(context);
+
     showDialog(
       context: context,
-      builder: (_) {
-        final theme = Theme.of(context);
+      builder: (_) => AlertDialog(
+        title: const Text("Ort auswählen"),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            children: [
 
-        return AlertDialog(
-          title: const Text("Ort auswählen"),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView(
-              children: [
-
-                if (activeDocs.isNotEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: Text("🔴 LIVE AKTUELL", style: TextStyle(fontWeight: FontWeight.bold)),
+              if (activeDocs.isNotEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    "🔴 LIVE AKTUELL",
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
+                ),
 
-                ...sortedDocs.map((doc) {
+              ...sortedDocs.map((doc) {
 
-                  final isActive = activeMap[doc.id] == true;
+                final isActive = activeMap[doc.id] == true;
 
-                  return Card(
-                    color: isActive
-                        ? (theme.brightness == Brightness.dark
-                            ? Colors.green.shade900
-                            : Colors.green.shade50)
-                        : null,
-                    child: ListTile(
-                      title: Text(
-                        doc['name'] ?? "",
-                        style: TextStyle(color: theme.colorScheme.onSurface),
-                      ),
-                      subtitle: Text(
-                        isActive ? "🔥 Live aktiv" : "Keine aktuellen Daten",
-                        style: TextStyle(color: theme.colorScheme.onSurface),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => AdlerLiveScreen(
-                              locationId: doc.id,
-                              locationName: doc['name'] ?? "",
-                            ),
-                          ),
-                        );
-                      },
+                return Card(
+                  color: isActive
+                      ? (theme.brightness == Brightness.dark
+                          ? Colors.green.shade900
+                          : Colors.green.shade50)
+                      : null,
+                  child: ListTile(
+                    title: Text(
+                      doc['name'] ?? "",
+                      style: TextStyle(color: theme.colorScheme.onSurface),
                     ),
-                  );
-                }),
-              ],
-            ),
+                    subtitle: Text(
+                      isActive
+                          ? "🔥 Live aktiv"
+                          : "Keine aktuellen Daten",
+                      style: TextStyle(color: theme.colorScheme.onSurface),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AdlerLiveScreen(
+                            locationId: doc.id,
+                            locationName: doc['name'] ?? "",
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -166,6 +173,9 @@ class _NewsScreenState extends State<NewsScreen> {
         ],
       ),
 
+      //--------------------------------------------------
+      // FAB
+      //--------------------------------------------------
       floatingActionButton: AdminService.isAdmin
           ? FloatingActionButton(
               onPressed: () {},
@@ -177,11 +187,15 @@ class _NewsScreenState extends State<NewsScreen> {
               label: const Text("News melden"),
             ),
 
+      //--------------------------------------------------
+      // STREAM
+      //--------------------------------------------------
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('news')
             .orderBy('date', descending: true)
             .snapshots(),
+
         builder: (context, snapshot) {
 
           if (!snapshot.hasData) {
@@ -190,7 +204,10 @@ class _NewsScreenState extends State<NewsScreen> {
 
           final allDocs = snapshot.data!.docs;
 
-          final docs = allDocs.where((doc) {
+          //--------------------------------------------------
+          // ✅ FILTER
+          //--------------------------------------------------
+          final filteredDocs = allDocs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
 
             if (selectedFilter == "highlights") {
@@ -222,12 +239,12 @@ class _NewsScreenState extends State<NewsScreen> {
                   child: Stack(
                     children: [
                       Text(
-"📢 NEWS & COMMUNITY\n\n"
-"Alles rund um dein Schützenfest:\n\n"
-"🔥 Aktuelle Meldungen\n"
-"⚡ Live Updates direkt vom Fest (z.B. Adlerschießen)\n"
-"👑 Wichtige Highlights vor Ort\n\n"
-"👉 Teile deine Infos mit der Community!",
+                        "📢 NEWS & COMMUNITY\n\n"
+                        "Alles rund um dein Schützenfest:\n\n"
+                        "🔥 Aktuelle Meldungen\n"
+                        "⚡ Live Updates direkt vom Fest (z.B. Adlerschießen)\n"
+                        "👑 Wichtige Highlights vor Ort\n\n"
+                        "👉 Teile deine Infos mit der Community!",
                         style: TextStyle(
                           color: theme.colorScheme.onSurface,
                         ),
@@ -244,7 +261,7 @@ class _NewsScreenState extends State<NewsScreen> {
                 ),
 
               //--------------------------------------------------
-              // FILTER
+              // FILTER BUTTONS
               //--------------------------------------------------
               SizedBox(
                 height: 50,
@@ -273,7 +290,7 @@ class _NewsScreenState extends State<NewsScreen> {
 
                   return FutureBuilder(
                     future: Future.wait(docs.map((d) => _isLocationLive(d.id))),
-                    builder: (ctx, liveSnap) {
+                    builder: (context, liveSnap) {
 
                       if (!liveSnap.hasData) return const SizedBox();
 
@@ -299,10 +316,11 @@ class _NewsScreenState extends State<NewsScreen> {
                             ),
                           ),
                           subtitle: Text(
-                            hasLive ? "🔥 Gerade aktiv!" : "Momentan kein Live Event",
+                            hasLive
+                                ? "🔥 Gerade aktiv!"
+                                : "Momentan kein Live Event",
                             style: TextStyle(
-                              color: theme.colorScheme.onSurface,
-                            ),
+                                color: theme.colorScheme.onSurface),
                           ),
                           trailing: const Icon(Icons.arrow_forward_ios),
                           onTap: _openLiveSelection,
@@ -316,11 +334,12 @@ class _NewsScreenState extends State<NewsScreen> {
               //--------------------------------------------------
               // NEWS LIST
               //--------------------------------------------------
-              ...docs.map((doc) {
+              ...filteredDocs.map((doc) {
 
-                final news = NewsItem.fromMap(doc.data() as Map<String, dynamic>);
-                final important =
-                    (doc.data() as Map<String, dynamic>)['isImportant'] == true;
+                final data = doc.data() as Map<String, dynamic>;
+                final news = NewsItem.fromMap(data);
+
+                final important = data['isImportant'] == true;
 
                 return Card(
                   color: important
