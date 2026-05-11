@@ -17,10 +17,139 @@ class AdlerLiveScreen extends StatefulWidget {
 
 class _AdlerLiveScreenState extends State<AdlerLiveScreen> {
 
+  //--------------------------------------------------
+  // ✅ VIEW MODE
+  //--------------------------------------------------
+  String viewMode = "jung"; // jung | alt | split
+
   String _formatTime(DateTime t) {
     return "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
   }
 
+  //--------------------------------------------------
+  Widget _buildSingleLive(String eventType) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('adler_events')
+          .doc(widget.locationId)
+          .collection('events')
+          .doc(eventType)
+          .snapshots(),
+      builder: (context, snapshot) {
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const Center(
+              child: Text("Keine Daten", style: TextStyle(color: Colors.white)));
+        }
+
+        final data =
+            snapshot.data!.data() as Map<String, dynamic>;
+
+        final shots = data['shots'] ?? 0;
+        final king = data['kingName'];
+        final results =
+            Map<String, dynamic>.from(data['results'] ?? {});
+        final participants =
+            (data['participants'] as List?) ?? [];
+
+        final sorted = results.entries.toList()
+          ..sort((a, b) =>
+              (b.value['order'] ?? 0)
+                  .compareTo(a.value['order'] ?? 0));
+
+        final now = DateTime.now();
+
+        return Column(
+          children: [
+
+            //--------------------------------------------------
+            // HEADER
+            //--------------------------------------------------
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.green,
+              child: Text(
+                "${eventType == "jung" ? "JUNGKÖNIG" : "ALTKÖNIG"} • SCHÜSSE: $shots",
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 20,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold),
+              ),
+            ),
+
+            //--------------------------------------------------
+            Text(
+              "Jetzt: ${_formatTime(now)}",
+              style: const TextStyle(color: Colors.white70),
+            ),
+
+            //--------------------------------------------------
+            if (king != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                color: Colors.amber,
+                child: Text(
+                  "👑 $king",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+
+            //--------------------------------------------------
+            if (participants.isNotEmpty)
+              Wrap(
+                children: participants
+                    .map((p) => Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Chip(
+                            label: Text(p),
+                          ),
+                        ))
+                    .toList(),
+              ),
+
+            //--------------------------------------------------
+            Expanded(
+              child: ListView(
+                children: sorted.asMap().entries.map((entry) {
+
+                  final index = entry.key;
+                  final part = entry.value.key;
+                  final r = entry.value.value;
+
+                  final isLatest = index == 0;
+
+                  return Container(
+                    margin: const EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(12),
+                    color: isLatest
+                        ? Colors.orange
+                        : Colors.grey.shade900,
+                    child: Row(
+                      children: [
+
+                        Expanded(child: Text(part, style: const TextStyle(color: Colors.white))),
+
+                        Expanded(child: Text(r['name'], style: const TextStyle(color: Colors.white))),
+
+                        Text("${r['shots']}",
+                            style: const TextStyle(color: Colors.green)),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            )
+          ],
+        );
+      },
+    );
+  }
+
+  //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,219 +160,70 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen> {
         backgroundColor: Colors.green,
       ),
 
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('adler_events')
-            .doc(widget.locationId)
-            .snapshots(),
-        builder: (context, snapshot) {
-
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-
-          final shots = data['shots'] ?? 0;
-          final king = data['kingName'];
-
-          final results =
-              Map<String, dynamic>.from(data['results'] ?? {});
-
-          final participants =
-              (data['participants'] as List?) ?? [];
+      body: Column(
+        children: [
 
           //--------------------------------------------------
-          // ✅ STABILE SORTIERUNG
+          // ✅ VIEW SWITCH
           //--------------------------------------------------
-          final sorted = results.entries.toList()
-            ..sort((a, b) =>
-                (b.value['order'] ?? 0)
-                    .compareTo(a.value['order'] ?? 0));
-
-          //--------------------------------------------------
-          final now = DateTime.now();
-
-          return Column(
+          Row(
             children: [
 
-              //--------------------------------------------------
-              // HEADER
-              //--------------------------------------------------
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                color: Colors.green,
-                child: Text(
-                  "SCHÜSSE: $shots",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 26,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-
-              //--------------------------------------------------
-              // UHRZEIT
-              //--------------------------------------------------
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Text(
-                  "Jetzt: ${_formatTime(now)}",
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ),
-
-              //--------------------------------------------------
-              // 👑 KÖNIG WIEDER SICHTBAR
-              //--------------------------------------------------
-              if (king != null)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  color: Colors.amber,
-                  child: Text(
-                    "👑 KÖNIG: $king",
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                ),
-
-              //--------------------------------------------------
-              // TEILNEHMER (saubere UI)
-              //--------------------------------------------------
-              if (participants.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.all(10),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade900,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: participants
-                        .map((p) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Text(
-                                p,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ))
-                        .toList(),
-                  ),
-                ),
-
-              //--------------------------------------------------
-              // TREFFER LISTE
-              //--------------------------------------------------
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(10),
-                  children: sorted.asMap().entries.map((entry) {
+                child: GestureDetector(
+                  onTap: () => setState(() => viewMode = "jung"),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    color: viewMode == "jung"
+                        ? Colors.green
+                        : Colors.grey,
+                    child: const Center(child: Text("Jung")),
+                  ),
+                ),
+              ),
 
-                    final index = entry.key;
-                    final part = entry.value.key;
-                    final r = entry.value.value;
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => viewMode = "alt"),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    color: viewMode == "alt"
+                        ? Colors.green
+                        : Colors.grey,
+                    child: const Center(child: Text("Alt")),
+                  ),
+                ),
+              ),
 
-                    final isLatest = index == 0;
-
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 400),
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: EdgeInsets.all(isLatest ? 20 : 16),
-
-                      decoration: BoxDecoration(
-                        color: isLatest
-                            ? Colors.orange.shade700
-                            : Colors.grey.shade900,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isLatest
-                              ? Colors.yellow
-                              : Colors.green,
-                          width: isLatest ? 3 : 2,
-                        ),
-
-                        //--------------------------------------------------
-                        // Glow
-                        //--------------------------------------------------
-                        boxShadow: isLatest
-                            ? [
-                                BoxShadow(
-                                  color: Colors.orange.withValues(alpha: 0.7),
-                                  blurRadius: 20,
-                                  spreadRadius: 2,
-                                ),
-                              ]
-                            : [],
-                      ),
-
-                      child: Row(
-                        children: [
-
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              part,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isLatest ? 22 : 18,
-                                fontWeight:
-                                    isLatest ? FontWeight.bold : null,
-                              ),
-                            ),
-                          ),
-
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              r['name'],
-                              style: TextStyle(
-                                fontSize: isLatest ? 22 : 18,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-
-                                Text(
-                                  "${r['shots']}",
-                                  style: TextStyle(
-                                    fontSize: isLatest ? 22 : 18,
-                                    color: Colors.green,
-                                  ),
-                                ),
-
-                                if (r['time'] != null)
-                                  Text(
-                                    _formatTime(DateTime.parse(r['time'])),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.white54,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => viewMode = "split"),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    color: viewMode == "split"
+                        ? Colors.green
+                        : Colors.grey,
+                    child: const Center(child: Text("Split")),
+                  ),
                 ),
               ),
             ],
-          );
-        },
+          ),
+
+          //--------------------------------------------------
+          // ✅ CONTENT
+          //--------------------------------------------------
+          Expanded(
+            child: viewMode == "split"
+                ? Row(
+                    children: [
+                      Expanded(child: _buildSingleLive("jung")),
+                      Expanded(child: _buildSingleLive("alt")),
+                    ],
+                  )
+                : _buildSingleLive(viewMode),
+          ),
+        ],
       ),
     );
   }

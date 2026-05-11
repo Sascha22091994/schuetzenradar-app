@@ -19,8 +19,30 @@ class _AdlerScreenState extends State<AdlerScreen> {
 
   final TextEditingController nameController = TextEditingController();
 
-  List<String> players = [];
+  //--------------------------------------------------
+  // ✅ EVENT AUSWAHL
+  //--------------------------------------------------
+  String selectedEvent = "jung";
 
+  //--------------------------------------------------
+  // ✅ PARALLELE STATES
+  //--------------------------------------------------
+  Map<String, Map<String, dynamic>> eventData = {
+    "jung": {
+      "shots": 0,
+      "kingName": null,
+      "results": <String, dynamic>{},
+      "players": <String>[],
+    },
+    "alt": {
+      "shots": 0,
+      "kingName": null,
+      "results": <String, dynamic>{},
+      "players": <String>[],
+    },
+  };
+
+  //--------------------------------------------------
   final List<String> parts = [
     "Krone 👑",
     "Zepter ⚜️",
@@ -30,46 +52,55 @@ class _AdlerScreenState extends State<AdlerScreen> {
     "Adler 🦅",
   ];
 
-  Map<String, dynamic> results = {};
-
-  int shots = 0;
-  String? kingName;
-
-  //--------------------------------------------------
-  // ✅ ZEIT FORMAT
   //--------------------------------------------------
   String _formatTime(DateTime time) {
     return "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
   }
 
+  Map<String, dynamic> get current => eventData[selectedEvent]!;
+
   //--------------------------------------------------
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadBothEvents();
   }
 
   //--------------------------------------------------
-  Future<void> _loadData() async {
+  // ✅ BEIDE EVENTS LADEN + FIX (LinkedMap → Map)
+  //--------------------------------------------------
+  Future<void> _loadBothEvents() async {
 
-    final doc = await FirebaseFirestore.instance
-        .collection('adler_events')
-        .doc(widget.locationId)
-        .get();
+    for (var event in ["jung", "alt"]) {
 
-    if (doc.exists) {
-      final data = doc.data() as Map<String, dynamic>;
+      final doc = await FirebaseFirestore.instance
+          .collection('adler_events')
+          .doc(widget.locationId)
+          .collection('events')
+          .doc(event)
+          .get();
 
-      setState(() {
-        shots = data['shots'] ?? 0;
-        kingName = data['kingName'];
-        results = Map<String, dynamic>.from(data['results'] ?? {});
-        players = (data['participants'] as List?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [];
-      });
+      if (doc.exists) {
+        final data = doc.data()!;
+
+        eventData[event] = {
+          "shots": data['shots'] ?? 0,
+          "kingName": data['kingName'],
+
+          "results": Map<String, dynamic>.from(
+            (data['results'] ?? {}).map((key, value) =>
+                MapEntry(
+                  key.toString(),
+                  Map<String, dynamic>.from(value),
+                )),
+          ),
+
+          "players": List<String>.from(data['participants'] ?? []),
+        };
+      }
     }
+
+    setState(() {});
   }
 
   //--------------------------------------------------
@@ -78,14 +109,16 @@ class _AdlerScreenState extends State<AdlerScreen> {
     await FirebaseFirestore.instance
         .collection('adler_events')
         .doc(widget.locationId)
+        .collection('events')
+        .doc(selectedEvent)
         .set({
 
       "isActive": true,
-      "shots": shots,
-      "kingName": kingName,
-      "results": results,
-      "participants": players,
-
+      "shots": current['shots'],
+      "kingName": current['kingName'],
+      "results": current['results'],
+      "participants": current['players'],
+      "eventType": selectedEvent,
       "lastUpdate": DateTime.now().toIso8601String(),
 
     }, SetOptions(merge: true));
@@ -95,20 +128,14 @@ class _AdlerScreenState extends State<AdlerScreen> {
   Future<void> _addPlayer() async {
 
     final name = nameController.text.trim();
-    if (name.isEmpty || players.contains(name)) return;
+    if (name.isEmpty || current['players'].contains(name)) return;
 
     setState(() {
-      players.add(name);
+      current['players'].add(name);
       nameController.clear();
     });
 
-    await FirebaseFirestore.instance
-        .collection('adler_events')
-        .doc(widget.locationId)
-        .set({
-      "isActive": true,
-      "participants": players,
-    }, SetOptions(merge: true));
+    await _saveData();
   }
 
   //--------------------------------------------------
@@ -133,42 +160,37 @@ class _AdlerScreenState extends State<AdlerScreen> {
     if (confirm != true) return;
 
     setState(() {
-      results.clear();
-      shots = 0;
-      kingName = null;
-      players.clear();
+      current['results'].clear();
+      current['shots'] = 0;
+      current['kingName'] = null;
+      current['players'].clear();
     });
 
-    await FirebaseFirestore.instance
-        .collection('adler_events')
-        .doc(widget.locationId)
-        .set({
-      "isActive": false,
-      "shots": 0,
-      "kingName": null,
-      "results": {},
-      "participants": [],
-      "lastUpdate": DateTime.now().toIso8601String(),
-    });
+    await _saveData();
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("🔄 Neues Spiel gestartet")),
-    );
+  //--------------------------------------------------
+  void _switchEvent(String type) {
+    setState(() {
+      selectedEvent = type;
+    });
   }
 
   //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
 
-    return Scaffold(
+    final shots = current['shots'];
+    final players = List<String>.from(current['players']);
+    final results = current['results'];
 
+    return Scaffold(
       appBar: AppBar(
-        title: Text("Adler - ${widget.locationName}"),
+        title: Text("Adler - ${widget.locationName} (${selectedEvent.toUpperCase()})"),
         backgroundColor: Colors.green,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: "Reset",
             onPressed: _resetGame,
           ),
         ],
@@ -178,6 +200,52 @@ class _AdlerScreenState extends State<AdlerScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+
+            //--------------------------------------------------
+            // ✅ SWITCH
+            //--------------------------------------------------
+            Row(
+              children: [
+
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _switchEvent("jung"),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      color: selectedEvent == "jung"
+                          ? Colors.green
+                          : Colors.grey,
+                      child: const Center(child: Text("Jungkönig")),
+                    ),
+                  ),
+                ),
+
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _switchEvent("alt"),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      color: selectedEvent == "alt"
+                          ? Colors.green
+                          : Colors.grey,
+                      child: const Center(child: Text("Altkönig")),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            //--------------------------------------------------
+            // ✅ UHRZEIT
+            //--------------------------------------------------
+            Text(
+              "Jetzt: ${_formatTime(DateTime.now())}",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 10),
 
             //--------------------------------------------------
             // ADD PLAYER
@@ -206,8 +274,7 @@ class _AdlerScreenState extends State<AdlerScreen> {
             if (players.isNotEmpty)
               Wrap(
                 spacing: 6,
-                children:
-                    players.map((p) => Chip(label: Text(p))).toList(),
+                children: players.map((p) => Chip(label: Text(p))).toList(),
               ),
 
             const SizedBox(height: 10),
@@ -219,12 +286,11 @@ class _AdlerScreenState extends State<AdlerScreen> {
               color: Colors.green.shade100,
               child: ListTile(
                 title: Text("Schüsse: $shots"),
-                trailing: ElevatedButton.icon(
+                trailing: IconButton(
                   icon: const Icon(Icons.add),
-                  label: const Text("Schuss"),
                   onPressed: () async {
                     setState(() {
-                      shots++;
+                      current['shots']++;
                     });
                     await _saveData();
                   },
@@ -232,29 +298,8 @@ class _AdlerScreenState extends State<AdlerScreen> {
               ),
             ),
 
-            const SizedBox(height: 10),
-
             //--------------------------------------------------
-            // ✅ AKTUELLE UHRZEIT
-            //--------------------------------------------------
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.black12,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                "Jetzt: ${_formatTime(DateTime.now())}",
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            //--------------------------------------------------
-            // TREFFER LISTE
+            // TREFFER
             //--------------------------------------------------
             Expanded(
               child: ListView(
@@ -266,24 +311,9 @@ class _AdlerScreenState extends State<AdlerScreen> {
                     child: ListTile(
                       title: Text(part),
 
-                      //--------------------------------------------------
-                      // ✅ TREFFER + ZEIT
-                      //--------------------------------------------------
                       subtitle: result != null
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("${result['name']} • Schuss: ${result['shots']}"),
-
-                                if (result['time'] != null)
-                                  Text(
-                                    "um ${_formatTime(DateTime.parse(result['time']))}",
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                              ],
+                          ? Text(
+                              "${result['name']} • Schuss ${result['shots']} • ${_formatTime(DateTime.parse(result['time']))}",
                             )
                           : null,
 
@@ -291,46 +321,26 @@ class _AdlerScreenState extends State<AdlerScreen> {
                           ? const Icon(Icons.check, color: Colors.green)
                           : DropdownButton<String>(
                               hint: const Text("Schütze"),
+                              value: null,
                               items: players.map((p) =>
                                   DropdownMenuItem(
                                       value: p, child: Text(p)))
                                   .toList(),
-
                               onChanged: (value) async {
                                 if (value == null) return;
 
                                 setState(() {
-                                  results[part] = {
+                                  current['results'][part] = {
                                     "name": value,
-                                    "shots": shots,
-                                    "order": DateTime.now().millisecondsSinceEpoch,
+                                    "shots": current['shots'],
                                     "time": DateTime.now().toIso8601String(),
+                                    "order": DateTime.now().millisecondsSinceEpoch,
                                   };
+
+                                  if (part == "Adler 🦅") {
+                                    current['kingName'] = value;
+                                  }
                                 });
-
-                                if (part == "Adler 🦅") {
-                                  kingName = value;
-
-                                  await FirebaseFirestore.instance
-                                      .collection('news')
-                                      .add({
-                                    "title": "👑 Neuer König in ${widget.locationName}",
-                                    "content": "$value hat den Adler abgeschossen!",
-                                    "date": DateTime.now().toIso8601String(),
-                                    "type": "highlight",
-                                    "isImportant": true,
-                                  });
-                                } else {
-                                  await FirebaseFirestore.instance
-                                      .collection('news')
-                                      .add({
-                                    "title": "🦅 ${widget.locationName}",
-                                    "content": "$value hat $part getroffen!",
-                                    "date": DateTime.now().toIso8601String(),
-                                    "type": "live",
-                                    "isImportant": false,
-                                  });
-                                }
 
                                 await _saveData();
                               },
