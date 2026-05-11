@@ -1,36 +1,21 @@
 import 'package:url_launcher/url_launcher.dart';
 
 class EmailService {
-  static Future<void> sendFeedback() async {
+
+  //--------------------------------------------------
+  // ✅ FEEDBACK SENDEN (FLEXIBEL)
+  //--------------------------------------------------
+  static Future<void> sendFeedback({
+    String subject = "SchützenRadar – Feedback & Kontakt",
+    String body = _defaultBody,
+  }) async {
+
     final Uri emailUri = Uri(
       scheme: 'mailto',
-      path: 'info-schuetzenradar@web.de', // 👈 HIER DEINE MAIL
+      path: 'info-schuetzenradar@web.de',
       queryParameters: {
-        'subject': 'Schützenfeste App – Feedback',
-        'body': '''
-Hallo,
-
-ich habe folgendes Anliegen:
-
-[ ] Fehler melden
-[ ] Änderung vorschlagen
-[ ] Neues Schützenfest eintragen
-[ ] News einreichen
-
---------------------------------------
-
-Beschreibung:
-
-Ort / Schützenfest:
-
-Datum:
-
-Weitere Infos:
-
---------------------------------------
-
-Vielen Dank!
-''',
+        'subject': subject,
+        'body': body,
       },
     );
 
@@ -38,4 +23,38 @@ Vielen Dank!
       await launchUrl(emailUri);
     }
   }
+
+  //--------------------------------------------------
+  // ✅ STANDARD TEXT (VERBESSERT)
+  //--------------------------------------------------
+  static const String _defaultBody = '''
+Hallo,
+
+vielen Dank für diese tolle App! Ich habe folgendes Anliegen:
+
+☐ Fehler melden
+☐ Änderung vorschlagen
+☐ Neues Schützenfest eintragen
+☐ News einreichen
+☐ Zugang Adlerschießen anfragen
+
+--------------------------------------
+
+📍 Ort / Schützenfest:
+
+📅 Datum:
+
+📝 Beschreibung / Infos:
+
+--------------------------------------
+
+Weitere Anmerkungen:
+
+
+
+
+--------------------------------------
+
+Vielen Dank für deinen Einsatz und die Weiterentwicklung der App! 🍻
+''';
 }

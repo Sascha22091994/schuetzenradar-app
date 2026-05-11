@@ -134,36 +134,72 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  //--------------------------------------------------
-  // ✅ LIVE AUSWAHL
-  //--------------------------------------------------
-  Future<void> _openLiveSelection() async {
+  // 🔽 NUR DIESE METHODE WURDE ANGEPASST
+//--------------------------------------------------
+// ✅ LIVE AUSWAHL
+//--------------------------------------------------
+Future<void> _openLiveSelection() async {
 
-    final locationsSnapshot =
-        await FirebaseFirestore.instance.collection('locations').get();
+  final locationsSnapshot =
+      await FirebaseFirestore.instance.collection('locations').get();
 
-    final adlerSnapshot =
-        await FirebaseFirestore.instance.collection('adler_events').get();
+  final adlerSnapshot =
+      await FirebaseFirestore.instance.collection('adler_events').get();
 
-    Map<String, bool> activeMap = {};
+  Map<String, bool> activeMap = {};
 
-    for (var doc in adlerSnapshot.docs) {
-      final data = doc.data();
+  for (var doc in adlerSnapshot.docs) {
+    final data = doc.data();
 
-      if (data['results'] != null &&
-          (data['results'] as Map).isNotEmpty) {
-        activeMap[doc.id] = true;
-      }
+    if (data['results'] != null &&
+        (data['results'] as Map).isNotEmpty) {
+      activeMap[doc.id] = true;
     }
+  }
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Ort auswählen"),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView(
-            children: locationsSnapshot.docs.map((doc) {
+  //--------------------------------------------------
+  // ✅ SORTIERUNG LIVE OBEN
+  //--------------------------------------------------
+  final docs = locationsSnapshot.docs;
+
+  final activeDocs =
+      docs.where((doc) => activeMap[doc.id] == true).toList();
+
+  final inactiveDocs =
+      docs.where((doc) => activeMap[doc.id] != true).toList();
+
+  final sortedDocs = [
+    ...activeDocs,
+    ...inactiveDocs,
+  ];
+
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text("Ort auswählen"),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView(
+          children: [
+
+            //--------------------------------------------------
+            // ✅ HEADER (OPTIONAL)
+            //--------------------------------------------------
+            if (activeDocs.isNotEmpty)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text(
+                  "🔴 LIVE AKTUELL",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+            //--------------------------------------------------
+            // ✅ LISTE
+            //--------------------------------------------------
+            ...sortedDocs.map((doc) {
 
               final name = doc['name'] ?? "";
               final isActive = activeMap[doc.id] == true;
@@ -190,12 +226,13 @@ class _NewsScreenState extends State<NewsScreen> {
                   },
                 ),
               );
-            }).toList(),
-          ),
+            }),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   //--------------------------------------------------
   String _formatDate(DateTime d) {
