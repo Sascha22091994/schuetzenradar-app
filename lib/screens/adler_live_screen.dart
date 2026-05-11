@@ -25,6 +25,11 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
   String? viewerId;
 
+  //--------------------------------------------------
+  // ✅ NEU: CACHE FÜR STABILE DATEN
+  //--------------------------------------------------
+  final Map<String, Map<String, dynamic>> _lastValidData = {};
+
   @override
   void initState() {
     super.initState();
@@ -49,7 +54,7 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
   }
 
   //--------------------------------------------------
-  // VIEWER SYSTEM
+  // VIEWER SYSTEM (unverändert)
   //--------------------------------------------------
   Future<void> _registerViewer() async {
 
@@ -98,7 +103,6 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
   }
 
   Future<void> _removeViewer() async {
-
     if (viewerId == null) return;
 
     final ref = FirebaseFirestore.instance
@@ -171,11 +175,37 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
           .snapshots(),
       builder: (context, snapshot) {
 
-        final hasData = snapshot.hasData && snapshot.data!.exists;
+        //--------------------------------------------------
+        // ✅ LOADING STATE
+        //--------------------------------------------------
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !_lastValidData.containsKey(eventType)) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
 
-        final data = hasData
-            ? snapshot.data!.data() as Map<String, dynamic>
-            : {};
+        //--------------------------------------------------
+        // ✅ NEUE DATEN
+        //--------------------------------------------------
+        if (snapshot.hasData && snapshot.data!.exists) {
+
+          final newData =
+              snapshot.data!.data() as Map<String, dynamic>;
+
+          final valid = (newData['shots'] ?? 0) > 0 ||
+              (newData['participants'] != null &&
+                  (newData['participants'] as List).isNotEmpty);
+
+          if (valid) {
+            _lastValidData[eventType] = newData;
+          }
+        }
+
+        //--------------------------------------------------
+        // ✅ CACHE VERWENDEN
+        //--------------------------------------------------
+        final data = _lastValidData[eventType] ?? {};
 
         final shots = data['shots'] ?? 0;
         final king = data['kingName'];
@@ -193,10 +223,6 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
         return Stack(
           children: [
-
-            //--------------------------------------------------
-            // HAUPTINHALT
-            //--------------------------------------------------
             Column(
               children: [
 
@@ -210,14 +236,11 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
-                            "LIVE",
-                            style: TextStyle(
-                              fontSize: 22,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          const Text("LIVE",
+                              style: TextStyle(
+                                  fontSize: 22,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
                           const SizedBox(width: 8),
                           ScaleTransition(
                             scale: _pulse,
@@ -232,25 +255,15 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 8),
-
-                      Text(
-                        "Schüsse: $shots",
-                        style: const TextStyle(
-                          fontSize: 26,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      Text(
-                        _formatTime(now),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: Colors.white70,
-                        ),
-                      ),
+                      Text("Schüsse: $shots",
+                          style: const TextStyle(
+                              fontSize: 26,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
+                      Text(_formatTime(now),
+                          style: const TextStyle(
+                              fontSize: 18,
+                              color: Colors.white70)),
                     ],
                   ),
                 ),
@@ -259,19 +272,11 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
                 // TEILNEHMER
                 //--------------------------------------------------
                 if (participants.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Wrap(
-                      spacing: 8,
-                      children: participants
-                          .map((p) => Chip(
-                                label: Text(
-                                  p,
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                              ))
-                          .toList(),
-                    ),
+                  Wrap(
+                    spacing: 8,
+                    children: participants
+                        .map((p) => Chip(label: Text(p)))
+                        .toList(),
                   ),
 
                 //--------------------------------------------------
@@ -283,26 +288,21 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
                     margin: const EdgeInsets.all(12),
                     padding: const EdgeInsets.all(14),
                     color: Colors.amber,
-                    child: Text(
-                      "👑 $king",
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: Text("👑 $king",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold)),
                   ),
 
                 //--------------------------------------------------
                 // LISTE
                 //--------------------------------------------------
                 Expanded(
-                  child: !hasData
+                  child: data.isEmpty
                       ? const Center(
-                          child: Text(
-                            "Keine Live Daten",
-                            style: TextStyle(fontSize: 18, color: Colors.white),
-                          ),
+                          child: Text("Warte auf Live Daten...",
+                              style: TextStyle(color: Colors.white)),
                         )
                       : ListView(
                           children: sorted.map((entry) {
@@ -311,62 +311,46 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
                             final r = entry.value;
 
                             final time = r['time'] != null
-                                ? _formatTime(DateTime.parse(r['time']))
+                                ? _formatTime(
+                                    DateTime.parse(r['time']))
                                 : "--:--";
 
                             return Container(
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 6),
+                              margin: const EdgeInsets.all(6),
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: Colors.grey.shade900,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius:
+                                    BorderRadius.circular(12),
                               ),
                               child: Row(
                                 children: [
-
                                   Expanded(
                                     flex: 3,
-                                    child: Text(
-                                      part,
-                                      style: const TextStyle(
-                                        fontSize: 22,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                    child: Text(part,
+                                        style: const TextStyle(
+                                            fontSize: 20,
+                                            color: Colors.white,
+                                            fontWeight:
+                                                FontWeight.bold)),
                                   ),
-
                                   Expanded(
                                     flex: 3,
-                                    child: Text(
-                                      r['name'] ?? "",
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        color: Colors.white,
-                                      ),
-                                    ),
+                                    child: Text(r['name'] ?? "",
+                                        style: const TextStyle(
+                                            color: Colors.white)),
                                   ),
-
                                   Expanded(
                                     flex: 2,
-                                    child: Text(
-                                      time,
+                                    child: Text(time,
+                                        style: const TextStyle(
+                                            color:
+                                                Colors.white70)),
+                                  ),
+                                  Text("${r['shots']}",
                                       style: const TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.white70,
-                                      ),
-                                    ),
-                                  ),
-
-                                  Text(
-                                    "${r['shots']}",
-                                    style: const TextStyle(
-                                      fontSize: 22,
-                                      color: Colors.greenAccent,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                          color:
+                                              Colors.greenAccent)),
                                 ],
                               ),
                             );
@@ -374,48 +358,6 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
                         ),
                 )
               ],
-            ),
-
-            //--------------------------------------------------
-            // KLEINE STATS UNTEN RECHTS
-            //--------------------------------------------------
-            Positioned(
-              right: 10,
-              bottom: 10,
-              child: StreamBuilder<DocumentSnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('adler_stats')
-                    .doc(widget.locationId)
-                    .snapshots(),
-                builder: (context, snapshot) {
-
-                  final data =
-                      snapshot.data?.data() as Map<String, dynamic>?;
-
-                  final current = data?['current'] ?? 0;
-                  final peak = data?['peak'] ?? 0;
-                  final total = data?['total'] ?? 0;
-
-                  return Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha:0.5),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text("👀 $current",
-                            style: const TextStyle(fontSize: 12, color: Colors.white70)),
-                        Text("🔥 $peak",
-                            style: const TextStyle(fontSize: 12, color: Colors.orange)),
-                        Text("🎯 $total",
-                            style: const TextStyle(fontSize: 12, color: Colors.greenAccent)),
-                      ],
-                    ),
-                  );
-                },
-              ),
             ),
           ],
         );
@@ -434,10 +376,6 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
       ),
       body: Column(
         children: [
-
-          //--------------------------------------------------
-          // BUTTONS
-          //--------------------------------------------------
           Row(
             children: [
               _modeButton("Jungschütze", "jung"),
