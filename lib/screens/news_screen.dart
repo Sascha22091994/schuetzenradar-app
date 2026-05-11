@@ -222,11 +222,12 @@ class _NewsScreenState extends State<NewsScreen> {
                   child: Stack(
                     children: [
                       Text(
-                        "📢 NEWS & COMMUNITY\n\n"
-                        "🔥 Aktuelle Infos\n"
-                        "⚡ Live Updates\n"
-                        "⭐ Highlights\n\n"
-                        "👉 Sende uns Infos!",
+"📢 NEWS & COMMUNITY\n\n"
+"Alles rund um dein Schützenfest:\n\n"
+"🔥 Aktuelle Meldungen\n"
+"⚡ Live Updates direkt vom Fest (z.B. Adlerschießen)\n"
+"👑 Wichtige Highlights vor Ort\n\n"
+"👉 Teile deine Infos mit der Community!",
                         style: TextStyle(
                           color: theme.colorScheme.onSurface,
                         ),
