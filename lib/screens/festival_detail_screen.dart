@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/festival.dart';
 import '../models/location.dart';
@@ -14,33 +15,61 @@ class FestivalDetailScreen extends StatelessWidget {
     required this.festival,
   });
 
+  //--------------------------------------------------
+  // ✅ SHARE
+  //--------------------------------------------------
+  void _shareEvent() {
+    final text =
+        "🎉 ${festival.name}\n\n"
+        "📍 ${festival.address}\n"
+        "📅 ${_formatDate()}\n\n"
+        "👉 Komm vorbei zum Schützenfest!";
+
+    Share.share(text);
+  }
+
+  //--------------------------------------------------
+  // GOOGLE MAPS
+  //--------------------------------------------------
   Future<void> _openMaps() async {
     final query = Uri.encodeComponent(festival.address);
+
     final url = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=$query');
+      'https://www.google.com/maps/search/?api=1&query=$query', // ✅ FIX
+    );
 
     await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
+  //--------------------------------------------------
   String _formatDate() {
     return '${festival.startDate.day}.${festival.startDate.month}.${festival.startDate.year}'
         ' – ${festival.endDate.day}.${festival.endDate.month}.${festival.endDate.year}';
   }
 
+  //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
 
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(festival.name)),
+      appBar: AppBar(
+        title: Text(festival.name),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: _shareEvent,
+          ),
+        ],
+      ),
 
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
 
           //--------------------------------------------------
-          // HEADER (bleibt bewusst grün)
+          // HEADER
           //--------------------------------------------------
           Container(
             width: double.infinity,
@@ -83,28 +112,16 @@ class FestivalDetailScreen extends StatelessWidget {
 
                 ListTile(
                   leading: const Icon(Icons.calendar_today),
-                  title: Text(
-                    'Datum',
-                    style: TextStyle(color: theme.colorScheme.onSurface),
-                  ),
-                  subtitle: Text(
-                    _formatDate(),
-                    style: TextStyle(color: theme.colorScheme.onSurface),
-                  ),
+                  title: const Text('Datum'),
+                  subtitle: Text(_formatDate()),
                 ),
 
                 const Divider(height: 0),
 
                 ListTile(
                   leading: const Icon(Icons.location_on),
-                  title: Text(
-                    'Adresse',
-                    style: TextStyle(color: theme.colorScheme.onSurface),
-                  ),
-                  subtitle: Text(
-                    festival.address,
-                    style: TextStyle(color: theme.colorScheme.onSurface),
-                  ),
+                  title: const Text('Adresse'),
+                  subtitle: Text(festival.address),
                   onTap: _openMaps,
                 ),
               ],
@@ -124,28 +141,24 @@ class FestivalDetailScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
 
-                    Text(
+                    const Text(
                       "Musikprogramm",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: theme.colorScheme.onSurface,
                       ),
                     ),
 
                     const SizedBox(height: 8),
 
                     if ((festival.musicDays['friday'] ?? '').isNotEmpty)
-                      Text("Freitag: ${festival.musicDays['friday']}",
-                          style: TextStyle(color: theme.colorScheme.onSurface)),
+                      Text("Freitag: ${festival.musicDays['friday']}"),
 
                     if ((festival.musicDays['saturday'] ?? '').isNotEmpty)
-                      Text("Samstag: ${festival.musicDays['saturday']}",
-                          style: TextStyle(color: theme.colorScheme.onSurface)),
+                      Text("Samstag: ${festival.musicDays['saturday']}"),
 
                     if ((festival.musicDays['sunday'] ?? '').isNotEmpty)
-                      Text("Sonntag: ${festival.musicDays['sunday']}",
-                          style: TextStyle(color: theme.colorScheme.onSurface)),
+                      Text("Sonntag: ${festival.musicDays['sunday']}"),
                   ],
                 ),
               ),
@@ -187,9 +200,7 @@ class FestivalDetailScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: theme.brightness == Brightness.dark
-                        ? const Color(0xFF1E1E1E)
-                        : Colors.green.shade50,
+                    color: Colors.green.shade50,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -198,14 +209,8 @@ class FestivalDetailScreen extends StatelessWidget {
                       const Icon(Icons.location_on, color: Colors.green),
                       const SizedBox(width: 10),
 
-                      Expanded(
-                        child: Text(
-                          "Mehr Infos zum Ort ansehen",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w500,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
+                      const Expanded(
+                        child: Text("Mehr Infos zum Ort ansehen"),
                       ),
 
                       const Icon(Icons.arrow_forward_ios, size: 14),
@@ -219,19 +224,18 @@ class FestivalDetailScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           //--------------------------------------------------
-          // FLYER
+          // ✅ FLYER (WIEDER DRIN!)
           //--------------------------------------------------
           if (festival.flyerUrl.isNotEmpty)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
 
-                Text(
+                const Text(
                   "Flyer & Infos",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: theme.colorScheme.onSurface,
                   ),
                 ),
 
@@ -247,7 +251,7 @@ class FestivalDetailScreen extends StatelessWidget {
                           onTap: () => Navigator.pop(context),
                           child: InteractiveViewer(
                             child: Image.network(
-                              festival.flyerUrl,
+                              festival.flyerUrl, // ✅ ORIGINAL wieder drin
                               fit: BoxFit.contain,
                             ),
                           ),
@@ -255,26 +259,30 @@ class FestivalDetailScreen extends StatelessWidget {
                       ),
                     );
                   },
+
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Image.network(
                       festival.flyerUrl,
+
                       loadingBuilder: (context, child, progress) {
                         if (progress == null) return child;
 
-                        return Container(
+                        return const SizedBox(
                           height: 200,
-                          alignment: Alignment.center,
-                          child: const CircularProgressIndicator(),
+                          child: Center(
+                            child: CircularProgressIndicator(),
+                          ),
                         );
                       },
+
                       errorBuilder: (context, error, stackTrace) {
-                        return Container(
+                        return const SizedBox(
                           height: 200,
-                          alignment: Alignment.center,
-                          child: Text(
-                            "Flyer konnte nicht geladen werden",
-                            style: TextStyle(color: theme.colorScheme.onSurface),
+                          child: Center(
+                            child: Text(
+                              "Flyer konnte nicht geladen werden",
+                            ),
                           ),
                         );
                       },
@@ -287,7 +295,7 @@ class FestivalDetailScreen extends StatelessWidget {
             ),
 
           //--------------------------------------------------
-          // NAVIGATION BUTTON
+          // NAVIGATION
           //--------------------------------------------------
           ElevatedButton.icon(
             onPressed: _openMaps,
