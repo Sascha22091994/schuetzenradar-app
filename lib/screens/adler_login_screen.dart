@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/email_service.dart'; // ✅ NEU
+import '../services/email_service.dart';
 import 'adler_screen.dart';
 
 class AdlerLoginScreen extends StatefulWidget {
@@ -56,8 +56,6 @@ class _AdlerLoginScreenState extends State<AdlerLoginScreen> {
   }
 
   //--------------------------------------------------
-  // ✅ ZUGANG ANFRAGEN (MIT ORT!)
-  //--------------------------------------------------
   void _requestAccess() {
     EmailService.sendFeedback(
       subject: "Zugang Adlerschießen – ${widget.locationName}",
@@ -74,21 +72,27 @@ class _AdlerLoginScreenState extends State<AdlerLoginScreen> {
   //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
+
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Login - ${widget.locationName}"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView( // ✅ wichtig wenn viel Text
+        child: SingleChildScrollView(
           child: Column(
             children: [
 
               const SizedBox(height: 20),
 
-              const Text(
+              Text(
                 "Zugriff nur für Berechtigte",
-                style: TextStyle(fontSize: 16),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
 
               const SizedBox(height: 20),
@@ -114,24 +118,29 @@ class _AdlerLoginScreenState extends State<AdlerLoginScreen> {
               const SizedBox(height: 25),
 
               //--------------------------------------------------
-              // ✅ INFO BLOCK (NEU)
+              // ✅ INFO BLOCK (FIXED)
               //--------------------------------------------------
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: theme.brightness == Brightness.dark
+                      ? const Color(0xFF1E1E1E)
+                      : Colors.green.shade50,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
 
                     Text(
                       "🦅 Adlerschießen – Live Bereich",
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
                     ),
 
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
 
                     Text(
                       "Hier können Schützen während des Adlerschießens live erfasst werden.\n\n"
@@ -139,6 +148,9 @@ class _AdlerLoginScreenState extends State<AdlerLoginScreen> {
                       "👉 Schüsse zählen\n"
                       "👉 Stand in Echtzeit verfolgen\n\n"
                       "Der Zugang ist nur für berechtigte Schreiber vor Ort möglich.",
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                      ),
                     ),
                   ],
                 ),
@@ -147,7 +159,7 @@ class _AdlerLoginScreenState extends State<AdlerLoginScreen> {
               const SizedBox(height: 12),
 
               //--------------------------------------------------
-              // ✅ ZUGANG ANFORDERN BUTTON
+              // BUTTON
               //--------------------------------------------------
               ElevatedButton.icon(
                 onPressed: _requestAccess,
@@ -158,14 +170,14 @@ class _AdlerLoginScreenState extends State<AdlerLoginScreen> {
               const SizedBox(height: 10),
 
               //--------------------------------------------------
-              // ✅ OPTIONAL: HINWEIS
+              // HINWEIS
               //--------------------------------------------------
-              const Text(
+              Text(
                 "👉 Du bist Besucher? Dann nutze den Live-Bereich zur Ansicht.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey,
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
             ],

@@ -24,8 +24,10 @@ class _FestivalCardState extends State<FestivalCard> {
     final isFavorite =
         FavoriteService.isFavorite(widget.festival.id);
 
+    final theme = Theme.of(context);
+
     //--------------------------------------------------
-    // ✅ DATUM OHNE UHRZEIT (WICHTIGER FIX)
+    // ✅ DATUM OHNE UHRZEIT
     //--------------------------------------------------
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -62,9 +64,13 @@ class _FestivalCardState extends State<FestivalCard> {
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
 
           //--------------------------------------------------
-          // ✅ GRAU WENN VERGANGEN
+          // ✅ PAST FARBE (LIGHT + DARK)
           //--------------------------------------------------
-          color: isPast ? Colors.grey.shade300 : null,
+          color: isPast
+              ? theme.brightness == Brightness.dark
+                  ? Colors.grey.shade800
+                  : Colors.grey.shade300
+              : null,
 
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
@@ -92,37 +98,52 @@ class _FestivalCardState extends State<FestivalCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
 
+                        //--------------------------------------------------
+                        // NAME
+                        //--------------------------------------------------
                         Text(
                           widget.festival.name,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                             color: isPast
-                                ? Colors.grey.shade700
-                                : Colors.black,
+                                ? theme.brightness == Brightness.dark
+                                    ? Colors.grey.shade400
+                                    : Colors.grey.shade700
+                                : theme.colorScheme.onSurface,
                           ),
                         ),
 
                         const SizedBox(height: 6),
 
+                        //--------------------------------------------------
+                        // ADRESSE
+                        //--------------------------------------------------
                         Text(
                           widget.festival.address,
                           style: TextStyle(
                             color: isPast
-                                ? Colors.grey.shade600
-                                : Colors.black,
+                                ? theme.brightness == Brightness.dark
+                                    ? Colors.grey.shade500
+                                    : Colors.grey.shade600
+                                : theme.colorScheme.onSurface,
                           ),
                         ),
 
                         const SizedBox(height: 6),
 
+                        //--------------------------------------------------
+                        // DATUM
+                        //--------------------------------------------------
                         Text(
                           '${widget.festival.startDate.day}.${widget.festival.startDate.month}'
                           ' - ${widget.festival.endDate.day}.${widget.festival.endDate.month}',
                           style: TextStyle(
                             color: isPast
-                                ? Colors.grey.shade600
-                                : Colors.black,
+                                ? theme.brightness == Brightness.dark
+                                    ? Colors.grey.shade500
+                                    : Colors.grey.shade600
+                                : theme.colorScheme.onSurface,
                           ),
                         ),
                       ],
@@ -150,7 +171,7 @@ class _FestivalCardState extends State<FestivalCard> {
                       ),
 
                       //--------------------------------------------------
-                      // ✅ COUNTDOWN NUR WENN NICHT VERGANGEN
+                      // COUNTDOWN
                       //--------------------------------------------------
                       if (!isPast)
                         CountdownWidget(

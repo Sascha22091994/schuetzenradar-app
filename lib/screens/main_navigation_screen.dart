@@ -4,6 +4,7 @@ import 'home_screen.dart';
 import 'news_screen.dart';
 import 'contact_screen.dart';
 import 'misc_screen.dart';
+import '../main.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -36,28 +37,46 @@ class _MainNavigationScreenState
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
 
-        onTap: (index) {
-          setState(() => _currentIndex = index);
-        },
+onTap: (index) {
 
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.newspaper),
-            label: 'News',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event),
-            label: 'Termine',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.sports_martial_arts),
-            label: 'Kontakt',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz),
-            label: 'Sonstiges',
-          ),
-        ],
+  if (index == 4) {
+    // ✅ DARK MODE SWITCH
+    if (themeNotifier.value == ThemeMode.light) {
+      themeNotifier.value = ThemeMode.dark;
+    } else if (themeNotifier.value == ThemeMode.dark) {
+      themeNotifier.value = ThemeMode.system;
+    } else {
+      themeNotifier.value = ThemeMode.light;
+    }
+    return;
+  }
+
+  setState(() => _currentIndex = index);
+},
+
+   items: const [
+  BottomNavigationBarItem(
+    icon: Icon(Icons.newspaper),
+    label: 'News',
+  ),
+  BottomNavigationBarItem(
+    icon: Icon(Icons.event),
+    label: 'Termine',
+  ),
+  BottomNavigationBarItem(
+    icon: Icon(Icons.sports_martial_arts),
+    label: 'Kontakt',
+  ),
+  BottomNavigationBarItem(
+    icon: Icon(Icons.more_horiz),
+    label: 'Sonstiges',
+  ),
+  BottomNavigationBarItem(
+    icon: Icon(Icons.dark_mode),
+    label: 'Modus',
+  ),
+],
+
       ),
     );
   }

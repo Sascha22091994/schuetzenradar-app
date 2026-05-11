@@ -42,79 +42,6 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   //--------------------------------------------------
-  // ✅ ADD NEWS
- //--------------------------------------------------
-  void _showAddNewsDialog() {
-    final title = TextEditingController();
-    final content = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Neue News"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: title, decoration: const InputDecoration(labelText: "Titel")),
-            TextField(controller: content, decoration: const InputDecoration(labelText: "Text")),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await FirebaseFirestore.instance.collection('news').add({
-                "title": title.text,
-                "content": content.text,
-                "date": DateTime.now().toIso8601String(),
-                "type": "highlight",
-                "isImportant": true,
-              });
-              Navigator.pop(context);
-            },
-            child: const Text("Speichern"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  //--------------------------------------------------
-  // ✅ EDIT NEWS
-  //--------------------------------------------------
-  void _editNews(String id, NewsItem news) {
-    final title = TextEditingController(text: news.title);
-    final content = TextEditingController(text: news.text);
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("News bearbeiten"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: title, decoration: const InputDecoration(labelText: "Titel")),
-            TextField(controller: content, decoration: const InputDecoration(labelText: "Text")),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await FirebaseFirestore.instance.collection('news').doc(id).update({
-                "title": title.text,
-                "content": content.text,
-              });
-              Navigator.pop(context);
-            },
-            child: const Text("Speichern"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  //--------------------------------------------------
-  // ✅ LIVE HELPER
-  //--------------------------------------------------
   Future<bool> _isLocationLive(String locationId) async {
     final jung = await FirebaseFirestore.instance
         .collection('adler_events')
@@ -135,83 +62,88 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   //--------------------------------------------------
-  // ✅ LIVE AUSWAHL (FIXED)
-  //--------------------------------------------------
-// NUR DIESE FUNKTION ERSETZEN
+  Future<void> _openLiveSelection() async {
 
-Future<void> _openLiveSelection() async {
+    final locationsSnapshot =
+        await FirebaseFirestore.instance.collection('locations').get();
 
-  final locationsSnapshot =
-      await FirebaseFirestore.instance.collection('locations').get();
+    final futures = locationsSnapshot.docs.map((doc) async {
+      final isLive = await _isLocationLive(doc.id);
+      return MapEntry(doc.id, isLive);
+    });
 
-  //--------------------------------------------------
-  // ✅ PARALLEL STATT NACHEINANDER (FIX)
-  //--------------------------------------------------
-  final futures = locationsSnapshot.docs.map((doc) async {
-    final isLive = await _isLocationLive(doc.id);
-    return MapEntry(doc.id, isLive);
-  });
+    final results = await Future.wait(futures);
+    final activeMap = Map.fromEntries(results);
+    final docs = locationsSnapshot.docs;
 
-  final results = await Future.wait(futures);
+    final activeDocs =
+        docs.where((doc) => activeMap[doc.id] == true).toList();
 
-  final activeMap = Map.fromEntries(results);
+    final inactiveDocs =
+        docs.where((doc) => activeMap[doc.id] != true).toList();
 
-  final docs = locationsSnapshot.docs;
+    final sortedDocs = [...activeDocs, ...inactiveDocs];
 
-  final activeDocs =
-      docs.where((doc) => activeMap[doc.id] == true).toList();
+    showDialog(
+      context: context,
+      builder: (_) {
+        final theme = Theme.of(context);
 
-  final inactiveDocs =
-      docs.where((doc) => activeMap[doc.id] != true).toList();
+        return AlertDialog(
+          title: const Text("Ort auswählen"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              children: [
 
-  final sortedDocs = [...activeDocs, ...inactiveDocs];
+                if (activeDocs.isNotEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Text("🔴 LIVE AKTUELL", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
 
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: const Text("Ort auswählen"),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: ListView(
-          children: [
+                ...sortedDocs.map((doc) {
 
-            if (activeDocs.isNotEmpty)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: Text("🔴 LIVE AKTUELL", style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
+                  final isActive = activeMap[doc.id] == true;
 
-            ...sortedDocs.map((doc) {
-              final isActive = activeMap[doc.id] == true;
-
-              return Card(
-                color: isActive ? Colors.green.shade50 : null,
-                child: ListTile(
-                  title: Text(doc['name'] ?? ""),
-                  subtitle: isActive
-                      ? const Text("🔥 Live aktiv")
-                      : const Text("Keine aktuellen Daten"),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AdlerLiveScreen(
-                          locationId: doc.id,
-                          locationName: doc['name'] ?? "",
-                        ),
+                  return Card(
+                    color: isActive
+                        ? (theme.brightness == Brightness.dark
+                            ? Colors.green.shade900
+                            : Colors.green.shade50)
+                        : null,
+                    child: ListTile(
+                      title: Text(
+                        doc['name'] ?? "",
+                        style: TextStyle(color: theme.colorScheme.onSurface),
                       ),
-                    );
-                  },
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    ),
-  );
-}
+                      subtitle: Text(
+                        isActive ? "🔥 Live aktiv" : "Keine aktuellen Daten",
+                        style: TextStyle(color: theme.colorScheme.onSurface),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AdlerLiveScreen(
+                              locationId: doc.id,
+                              locationName: doc['name'] ?? "",
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   //--------------------------------------------------
   String _formatDate(DateTime d) {
     return "${d.day}.${d.month}.${d.year}";
@@ -220,8 +152,10 @@ Future<void> _openLiveSelection() async {
   //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
 
+    final theme = Theme.of(context);
+
+    return Scaffold(
       appBar: AppBar(
         title: const Text("News"),
         actions: [
@@ -234,7 +168,7 @@ Future<void> _openLiveSelection() async {
 
       floatingActionButton: AdminService.isAdmin
           ? FloatingActionButton(
-              onPressed: _showAddNewsDialog,
+              onPressed: () {},
               child: const Icon(Icons.add),
             )
           : FloatingActionButton.extended(
@@ -248,7 +182,6 @@ Future<void> _openLiveSelection() async {
             .collection('news')
             .orderBy('date', descending: true)
             .snapshots(),
-
         builder: (context, snapshot) {
 
           if (!snapshot.hasData) {
@@ -273,35 +206,45 @@ Future<void> _openLiveSelection() async {
             padding: const EdgeInsets.all(12),
             children: [
 
-if (_showInfo)
-  Container(
-    padding: const EdgeInsets.all(14),
-    margin: const EdgeInsets.only(bottom: 12),
-    decoration: BoxDecoration(
-      color: const Color(0xFFE8F5E9),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Stack(
-      children: [
-        const Text(
-          "📢 NEWS & COMMUNITY\n\n"
-          "Hier findest du:\n\n"
-          "🔥 Aktuelle Infos von Schützenfesten\n"
-          "⚡ Live Updates (z.B. Adlerschießen)\n"
-          "⭐ Wichtige Highlights aus der Region\n\n"
-          "👉 Du hast Infos? Sende sie uns!",
-        ),
-        Positioned(
-          right: 0,
-          child: GestureDetector(
-            onTap: _hideInfo,
-            child: const Icon(Icons.close),
-          ),
-        ),
-      ],
-    ),
-  ),
+              //--------------------------------------------------
+              // INFO BOX
+              //--------------------------------------------------
+              if (_showInfo)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: theme.brightness == Brightness.dark
+                        ? const Color(0xFF1E1E1E)
+                        : const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Stack(
+                    children: [
+                      Text(
+                        "📢 NEWS & COMMUNITY\n\n"
+                        "🔥 Aktuelle Infos\n"
+                        "⚡ Live Updates\n"
+                        "⭐ Highlights\n\n"
+                        "👉 Sende uns Infos!",
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      Positioned(
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: _hideInfo,
+                          child: const Icon(Icons.close),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
+              //--------------------------------------------------
+              // FILTER
+              //--------------------------------------------------
               SizedBox(
                 height: 50,
                 child: Row(
@@ -317,7 +260,7 @@ if (_showInfo)
               const SizedBox(height: 10),
 
               //--------------------------------------------------
-              // ✅ LIVE BUTTON (FIXED)
+              // LIVE CARD
               //--------------------------------------------------
               FutureBuilder(
                 future: FirebaseFirestore.instance.collection('adler_events').get(),
@@ -329,44 +272,37 @@ if (_showInfo)
 
                   return FutureBuilder(
                     future: Future.wait(docs.map((d) => _isLocationLive(d.id))),
-         
-         builder: (ctx, liveSnap) {
+                    builder: (ctx, liveSnap) {
 
-  if (!liveSnap.hasData) {
-    // 👉 Wichtig: kein falscher Zustand anzeigen!
-    return const SizedBox(); 
-  }
+                      if (!liveSnap.hasData) return const SizedBox();
 
-  final results = liveSnap.data as List<bool>;
-  final hasLive = results.contains(true);
+                      final results = liveSnap.data as List<bool>;
+                      final hasLive = results.contains(true);
 
                       return Card(
-                        color: hasLive ? Colors.red.shade100 : null,
-                        margin: const EdgeInsets.only(bottom: 12),
+                        color: hasLive
+                            ? (theme.brightness == Brightness.dark
+                                ? Colors.red.shade900
+                                : Colors.red.shade100)
+                            : null,
                         child: ListTile(
-                          leading: Icon(Icons.visibility, color: hasLive ? Colors.red : Colors.grey),
-                          title: Row(
-                            children: [
-                              Text(
-                                "Adlerschießen verfolgen",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: hasLive ? Colors.red : Colors.black,
-                                ),
-                              ),
-                              if (hasLive)
-                                Container(
-                                  margin: const EdgeInsets.only(left: 8),
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Text("LIVE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                ),
-                            ],
+                          leading: Icon(
+                            Icons.visibility,
+                            color: hasLive ? Colors.red : Colors.grey,
                           ),
-                          subtitle: Text(hasLive ? "🔥 Gerade aktiv!" : "Momentan kein Live Event"),
+                          title: Text(
+                            "Adlerschießen verfolgen",
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Text(
+                            hasLive ? "🔥 Gerade aktiv!" : "Momentan kein Live Event",
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
                           trailing: const Icon(Icons.arrow_forward_ios),
                           onTap: _openLiveSelection,
                         ),
@@ -382,42 +318,27 @@ if (_showInfo)
               ...docs.map((doc) {
 
                 final news = NewsItem.fromMap(doc.data() as Map<String, dynamic>);
-                final important = (doc.data() as Map<String, dynamic>)['isImportant'] == true;
+                final important =
+                    (doc.data() as Map<String, dynamic>)['isImportant'] == true;
 
-                return Dismissible(
-                  key: Key(doc.id),
-                  direction: AdminService.isAdmin ? DismissDirection.endToStart : DismissDirection.none,
-                  confirmDismiss: (_) async => await showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text("Löschen?"),
-                      content: const Text("Bist du sicher?"),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Abbrechen")),
-                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Löschen")),
-                      ],
+                return Card(
+                  color: important
+                      ? (theme.brightness == Brightness.dark
+                          ? const Color(0xFF3A2E00)
+                          : Colors.amber.shade50)
+                      : null,
+                  child: ListTile(
+                    title: Text(
+                      news.title,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  onDismissed: (_) async {
-                    await FirebaseFirestore.instance.collection('news').doc(doc.id).delete();
-                  },
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  child: GestureDetector(
-                    onLongPress: () {
-                      if (AdminService.isAdmin) {
-                        _editNews(doc.id, news);
-                      }
-                    },
-                    child: Card(
-                      color: important ? Colors.amber.shade50 : null,
-                      child: ListTile(
-                        title: Text(news.title),
-                        subtitle: Text("${_formatDate(news.date)}\n${news.text}"),
+                    subtitle: Text(
+                      "${_formatDate(news.date)}\n${news.text}",
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -430,8 +351,11 @@ if (_showInfo)
     );
   }
 
+  //--------------------------------------------------
   Widget _filterButton(String label, String value) {
+
     final active = selectedFilter == value;
+    final theme = Theme.of(context);
 
     return GestureDetector(
       onTap: () => setState(() => selectedFilter = value),
@@ -439,14 +363,20 @@ if (_showInfo)
         margin: const EdgeInsets.symmetric(horizontal: 6),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: active ? Colors.green : Colors.grey.shade200,
+          color: active
+              ? Colors.green
+              : (theme.brightness == Brightness.dark
+                  ? Colors.grey.shade800
+                  : Colors.grey.shade200),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(label,
-            style: TextStyle(
-              color: active ? Colors.white : Colors.black,
-              fontWeight: FontWeight.bold,
-            )),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? Colors.white : theme.colorScheme.onSurface,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
