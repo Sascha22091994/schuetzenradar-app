@@ -7,6 +7,8 @@ import '../widgets/festival_card.dart';
 import '../services/email_service.dart';
 import '../services/favorite_service.dart';
 import '../services/admin_service.dart';
+import '../screens/taxi_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -158,6 +160,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
+
+//--------------------------------------------------
+// ✅ TAXI BUTTON (NEU)
+ //--------------------------------------------------
+Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 12),
+  child: Align(
+    alignment: Alignment.centerLeft,
+    child: ElevatedButton.icon(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const TaxiScreen(),
+          ),
+        );
+      },
+      icon: const Icon(Icons.local_taxi),
+      label: const Text("Taxis im Kreis"),
+    ),
+  ),
+),
               //--------------------------------------------------
               // LISTE
               //--------------------------------------------------
