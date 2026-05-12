@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
@@ -11,22 +13,39 @@ import 'services/favorite_service.dart';
 final ValueNotifier<ThemeMode> themeNotifier =
     ValueNotifier(ThemeMode.system);
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  runZonedGuarded<Future<void>>(
+    () async {
+      //--------------------------------------------------
+      // ✅ ALLES IN DERSSELBEN ZONE (FIX!)
+      //--------------------------------------------------
+      WidgetsFlutterBinding.ensureInitialized();
 
-  //--------------------------------------------------
-  // FIREBASE
-  //--------------------------------------------------
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+      //--------------------------------------------------
+      // FIREBASE
+      //--------------------------------------------------
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+
+      //--------------------------------------------------
+      // ✅ CRASHLYTICS
+      //--------------------------------------------------
+      FlutterError.onError =
+          FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+      //--------------------------------------------------
+      // SERVICES
+      //--------------------------------------------------
+      await FavoriteService.loadFavorites();
+
+      runApp(const MyApp());
+    },
+    (error, stack) {
+      FirebaseCrashlytics.instance
+          .recordError(error, stack, fatal: true);
+    },
   );
-
-  //--------------------------------------------------
-  // SERVICES
-  //--------------------------------------------------
-  await FavoriteService.loadFavorites();
-
-  runApp(const MyApp());
 }
 
 //--------------------------------------------------
@@ -47,8 +66,6 @@ class MyApp extends StatelessWidget {
           // ✅ THEME MODE
           //--------------------------------------------------
           themeMode: mode,
-
-          
 
           //--------------------------------------------------
           // ✅ UX (kein Glow)
@@ -113,7 +130,7 @@ class MyApp extends StatelessWidget {
           ),
 
           //--------------------------------------------------
-          // ✅ DARK THEME (FIX 1-4 eingebaut)
+          // ✅ DARK THEME
           //--------------------------------------------------
           darkTheme: ThemeData(
             useMaterial3: true,
@@ -131,9 +148,6 @@ class MyApp extends StatelessWidget {
               elevation: 0,
             ),
 
-            //--------------------------------------------------
-            // ✅ FIX 4: bessere Kartenfarbe
-            //--------------------------------------------------
             cardTheme: CardThemeData(
               elevation: 3,
               color: const Color(0xFF222222),
@@ -142,9 +156,6 @@ class MyApp extends StatelessWidget {
               ),
             ),
 
-            //--------------------------------------------------
-            // ✅ FIX 2: LISTTILE LESBAR
-            //--------------------------------------------------
             listTileTheme: const ListTileThemeData(
               textColor: Colors.white,
               iconColor: Colors.white70,
@@ -161,9 +172,6 @@ class MyApp extends StatelessWidget {
               ),
             ),
 
-            //--------------------------------------------------
-            // ✅ FIX 3: INPUT / SEARCH FELD
-            //--------------------------------------------------
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: const Color(0xFF1E1E1E),
@@ -181,9 +189,6 @@ class MyApp extends StatelessWidget {
               ),
             ),
 
-            //--------------------------------------------------
-            // ✅ FIX 1: TEXT GLOBAL WEISS
-            //--------------------------------------------------
             textTheme: ThemeData.dark().textTheme.apply(
               bodyColor: Colors.white,
               displayColor: Colors.white,
