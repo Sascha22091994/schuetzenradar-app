@@ -1,3 +1,13 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -6,12 +16,15 @@ plugins {
 }
 
 android {
-    namespace = "com.example.schuetzenfest_app"
+    
+
+	namespace = "com.schuetzenradar.app"
     compileSdk = flutter.compileSdkVersion
+	ndkVersion = "28.2.13676358"
 
     defaultConfig {
-        applicationId = "com.example.schuetzenfest_app"
-        minSdk = flutter.minSdkVersion   // ✅ WICHTIG
+		applicationId = "com.schuetzenradar.app"
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -26,9 +39,26 @@ android {
         jvmTarget = "17"
     }
 
+    //--------------------------------------------------
+    // ✅ SIGNING CONFIG
+    //--------------------------------------------------
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
+            storeFile = file("keystore.jks")
+            storePassword = keystoreProperties["storePassword"] as String
+        }
+    }
+
+    //--------------------------------------------------
+    // ✅ BUILD TYPES
+    //--------------------------------------------------
     buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("debug")
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

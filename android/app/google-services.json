@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:66726540458:android:e7f5601531cbd446cdccd3",
+        "mobilesdk_app_id": "1:66726540458:android:f1b3a9fb8562ab21cdccd3",
         "android_client_info": {
-          "package_name": "com.example.schuetzenfest_app"
+          "package_name": "com.schuetzenradar.app"
         }
       },
       "oauth_client": [],

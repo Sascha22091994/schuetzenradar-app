@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+//import 'package:url_launcher/url_launcher.dart';
 
 import '../services/email_service.dart';
 import 'legal_screen.dart';
 
 class ContactScreen extends StatelessWidget {
   const ContactScreen({super.key});
-
+/*
   //--------------------------------------------------
   // ✅ PAYPAL LINK + DANKE POPUP
   //--------------------------------------------------
@@ -29,7 +29,7 @@ class ContactScreen extends StatelessWidget {
       }
     });
   }
-
+*/
   //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
@@ -140,10 +140,10 @@ class ContactScreen extends StatelessWidget {
           //--------------------------------------------------
           // ✅ ANIMIERTER BUTTON
           //--------------------------------------------------
-          _AnimatedBeerButton(
+          /*_AnimatedBeerButton(
             onPressed: () => _openPayPal(context),
           ),
-
+*/
           //--------------------------------------------------
           // RECHTLICHES
           //--------------------------------------------------
