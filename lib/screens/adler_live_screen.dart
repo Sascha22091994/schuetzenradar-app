@@ -25,135 +25,194 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
   String? viewerId;
 
-//--------------------------------------------------
-// ✅ CACHE
-//--------------------------------------------------
-final Map<String, Map<String, dynamic>> _lastValidData = {};
+  //--------------------------------------------------
+  // ✅ CACHE
+  //--------------------------------------------------
+  final Map<String, Map<String, dynamic>> _lastValidData = {};
 
-@override
-void initState() {
-  super.initState();
+  @override
+  void initState() {
+    super.initState();
 
-  _pulseController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
 
-  _pulse = Tween(begin: 0.8, end: 1.2).animate(
-    CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-  );
+    _pulse = Tween(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
 
-  _registerViewer();
-}
+    _registerViewer();
+  }
 
-@override
-void dispose() {
+  @override
+  void dispose() {
+    _lastValidData.clear();
+
+    // ❗ async safe fire & forget
+    _removeViewer();
+
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   //--------------------------------------------------
-  // ✅ CACHE KOMPLETT LEEREN (WICHTIG!)
+  // ✅ REGISTER VIEWER (FIXED)
   //--------------------------------------------------
-  _lastValidData.clear();
+  Future<void> _registerViewer() async {
+    try {
+      final db = FirebaseFirestore.instance;
 
-  _removeViewer();
-  _pulseController.dispose();
-  super.dispose();
-}
+      final jungDoc = await db
+          .collection('adler_events')
+          .doc(widget.locationId)
+          .collection('events')
+          .doc('jung')
+          .get();
 
-//--------------------------------------------------
-// VIEWER SYSTEM (FIXED)
-//--------------------------------------------------
-Future<void> _registerViewer() async {
+      final altDoc = await db
+          .collection('adler_events')
+          .doc(widget.locationId)
+          .collection('events')
+          .doc('alt')
+          .get();
+
+      final isActive =
+          (jungDoc.data()?['isActive'] == true) ||
+          (altDoc.data()?['isActive'] == true);
+
+      if (!isActive) return;
+
+      final ref = db
+          .collection('adler_viewers')
+          .doc(widget.locationId)
+          .collection('users')
+          .doc();
+
+      viewerId = ref.id;
+
+      final statsRef =
+          db.collection('adler_stats').doc(widget.locationId);
+
+      await db.runTransaction((tx) async {
+
+        // ✅ FIRST READ
+        final snap = await tx.get(statsRef);
+
+        int current = 0;
+        int peak = 0;
+        int total = 0;
+
+        if (snap.exists) {
+          final data = snap.data() as Map<String, dynamic>;
+          current = data['current'] ?? 0;
+          peak = data['peak'] ?? 0;
+          total = data['total'] ?? 0;
+        }
+
+        current++;
+        total++;
+        if (current > peak) peak = current;
+
+        // ✅ THEN WRITE
+        tx.set(ref, {
+          "joinedAt": FieldValue.serverTimestamp(),
+        });
+
+        tx.set(statsRef, {
+          "current": current,
+          "peak": peak,
+          "total": total,
+        }, SetOptions(merge: true));
+      });
+
+    } catch (e) {
+      debugPrint("RegisterViewer Error: $e");
+    }
+  }
 
   //--------------------------------------------------
-  // ✅ CHECK: IST EVENT ÜBERHAUPT AKTIV?
+  // ✅ REMOVE VIEWER (FIXED)
   //--------------------------------------------------
-  final jungDoc = await FirebaseFirestore.instance
-      .collection('adler_events')
-      .doc(widget.locationId)
-      .collection('events')
-      .doc('jung')
-      .get();
+  Future<void> _removeViewer() async {
+    if (viewerId == null) return;
 
-  final altDoc = await FirebaseFirestore.instance
-      .collection('adler_events')
-      .doc(widget.locationId)
-      .collection('events')
-      .doc('alt')
-      .get();
+    try {
+      final db = FirebaseFirestore.instance;
 
-  final isActive =
-      (jungDoc.data()?['isActive'] == true) ||
-      (altDoc.data()?['isActive'] == true);
+      final ref = db
+          .collection('adler_viewers')
+          .doc(widget.locationId)
+          .collection('users')
+          .doc(viewerId);
 
-  //--------------------------------------------------
-  // ❌ NICHT AKTIV → KEIN VIEWER TRACKING
-  //--------------------------------------------------
-  if (!isActive) return;
+      final statsRef =
+          db.collection('adler_stats').doc(widget.locationId);
 
-  //--------------------------------------------------
-  // ✅ NORMAL WEITER
-  //--------------------------------------------------
-  final ref = FirebaseFirestore.instance
-      .collection('adler_viewers')
-      .doc(widget.locationId)
-      .collection('users')
-      .doc();
+      await db.runTransaction((tx) async {
 
-  viewerId = ref.id;
+        // ✅ FIRST READ
+        final snap = await tx.get(statsRef);
 
-  final statsRef =
-      FirebaseFirestore.instance.collection('adler_stats').doc(widget.locationId);
+        int current = 0;
 
-  await FirebaseFirestore.instance.runTransaction((tx) async {
+        if (snap.exists) {
+          final data = snap.data() as Map<String, dynamic>;
+          current = data['current'] ?? 0;
+        }
 
-    tx.set(ref, {
-      "joinedAt": FieldValue.serverTimestamp(),
-    });
+        if (current > 0) current--;
 
-    final snap = await tx.get(statsRef);
+        // ✅ THEN WRITE
+        tx.delete(ref);
 
-    int current = (snap.data()?['current'] ?? 0) + 1;
-    int peak = snap.data()?['peak'] ?? 0;
-    int total = (snap.data()?['total'] ?? 0) + 1;
+        tx.set(statsRef, {
+          "current": current,
+        }, SetOptions(merge: true));
+      });
 
-    if (current > peak) peak = current;
-
-    tx.set(statsRef, {
-      "current": current,
-      "peak": peak,
-      "total": total,
-    }, SetOptions(merge: true));
-  });
-}
-
-Future<void> _removeViewer() async {
-  if (viewerId == null) return;
-
-  final ref = FirebaseFirestore.instance
-      .collection('adler_viewers')
-      .doc(widget.locationId)
-      .collection('users')
-      .doc(viewerId);
-
-  final statsRef =
-      FirebaseFirestore.instance.collection('adler_stats').doc(widget.locationId);
-
-  await FirebaseFirestore.instance.runTransaction((tx) async {
-
-    tx.delete(ref);
-
-    final snap = await tx.get(statsRef);
-
-    int current = snap.data()?['current'] ?? 0;
-    if (current > 0) current--;
-
-    tx.set(statsRef, {"current": current}, SetOptions(merge: true));
-  });
-}
+    } catch (e) {
+      debugPrint("RemoveViewer Error: $e");
+    }
+  }
 
   //--------------------------------------------------
   String _formatTime(DateTime t) {
     return "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
+  }
+
+  //--------------------------------------------------
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: Text("LIVE – ${widget.locationName}"),
+        backgroundColor: Colors.green,
+      ),
+      body: Column(
+        children: [
+          Row(
+            children: [
+              _modeButton("Jung", "jung"),
+              _modeButton("Alt", "alt"),
+              _modeButton("Split", "split"),
+            ],
+          ),
+          Expanded(
+            child: viewMode == "split"
+                ? Row(
+                    children: [
+                      Expanded(child: _buildSingleLive("jung")),
+                      Expanded(child: _buildSingleLive("alt")),
+                    ],
+                  )
+                : _buildSingleLive(viewMode),
+          ),
+        ],
+      ),
+    );
   }
 
   //--------------------------------------------------
@@ -197,15 +256,14 @@ Future<void> _removeViewer() async {
 
         if (snapshot.hasData && snapshot.data!.exists) {
           final newData = snapshot.data!.data() as Map<String, dynamic>;
-          
-final isActive = newData['isActive'] == true;
 
-if (isActive) {
-  _lastValidData[eventType] = newData;
-} else {
-  _lastValidData.remove(eventType); // ✅ FINAL FIX
-}
+          final isActive = newData['isActive'] == true;
 
+          if (isActive) {
+            _lastValidData[eventType] = newData;
+          } else {
+            _lastValidData.remove(eventType);
+          }
         }
 
         final data = _lastValidData[eventType] ?? {};
@@ -221,35 +279,10 @@ if (isActive) {
 
         return Column(
           children: [
-
-            //--------------------------------------------------
-            // HEADER
-            //--------------------------------------------------
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("LIVE",
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 6),
-                      ScaleTransition(
-                        scale: _pulse,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                   Text("Schüsse: $shots",
                       style: const TextStyle(
                           fontSize: 22,
@@ -258,36 +291,6 @@ if (isActive) {
                 ],
               ),
             ),
-
-            //--------------------------------------------------
-            // TEILNEHMER
-            //--------------------------------------------------
-            if (participants.isNotEmpty)
-              Wrap(
-                spacing: 6,
-                children: participants
-                    .map((p) => Chip(label: Text(p)))
-                    .toList(),
-              ),
-
-            //--------------------------------------------------
-            // KÖNIG
-            //--------------------------------------------------
-            if (king != null)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.all(12),
-                color: Colors.amber,
-                child: Text("👑 $king",
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold)),
-              ),
-
-            //--------------------------------------------------
-            // LISTE (MOBILE FIX)
-            //--------------------------------------------------
             Expanded(
               child: data.isEmpty
                   ? const Center(
@@ -298,7 +301,6 @@ if (isActive) {
                     )
                   : ListView(
                       children: sorted.map((entry) {
-
                         final part = entry.key;
                         final r = entry.value;
 
@@ -306,45 +308,12 @@ if (isActive) {
                             ? _formatTime(DateTime.parse(r['time']))
                             : "--:--";
 
-                        return Container(
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          padding: const EdgeInsets.all(12),
-
-                          //--------------------------------------------------
-                          // ✅ BONUS HIGHLIGHT
-                          //--------------------------------------------------
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade900,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.greenAccent.withValues(alpha: 0.3),
-                            ),
-                          ),
-
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(part,
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold)),
-                                  ),
-                                  Text("${r['shots']}",
-                                      style: const TextStyle(
-                                          color: Colors.greenAccent)),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text("${r['name']} • $time",
-                                  style:
-                                      const TextStyle(color: Colors.white70)),
-                            ],
-                          ),
+                        return ListTile(
+                          title: Text(part, style: const TextStyle(color: Colors.white)),
+                          subtitle: Text("${r['name']} • $time",
+                              style: const TextStyle(color: Colors.white70)),
+                          trailing: Text("${r['shots']}",
+                              style: const TextStyle(color: Colors.greenAccent)),
                         );
                       }).toList(),
                     ),
@@ -352,39 +321,6 @@ if (isActive) {
           ],
         );
       },
-    );
-  }
-
-  //--------------------------------------------------
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: Text("LIVE – ${widget.locationName}"),
-        backgroundColor: Colors.green,
-      ),
-      body: Column(
-        children: [
-          Row(
-            children: [
-              _modeButton("Jung", "jung"),
-              _modeButton("Alt", "alt"),
-              _modeButton("Split", "split"),
-            ],
-          ),
-          Expanded(
-            child: viewMode == "split"
-                ? Row(
-                    children: [
-                      Expanded(child: _buildSingleLive("jung")),
-                      Expanded(child: _buildSingleLive("alt")),
-                    ],
-                  )
-                : _buildSingleLive(viewMode),
-          ),
-        ],
-      ),
     );
   }
 }

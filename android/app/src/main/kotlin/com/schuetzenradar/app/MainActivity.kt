@@ -1,4 +1,4 @@
-package com.example.schuetzenfest_app
+package com.schuetzenradar.app
 
 import io.flutter.embedding.android.FlutterActivity
 

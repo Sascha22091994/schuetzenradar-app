@@ -324,41 +324,42 @@ FutureBuilder(
               color: hasLive ? Colors.redAccent : Colors.grey,
             ),
 
-            //--------------------------------------------------
-            // ✅ LIVE BADGE IM TITEL
-            //--------------------------------------------------
-            title: Row(
-              children: [
-                Text(
-                  "Adlerschießen verfolgen",
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                    fontSize: hasLive ? 17 : 15,
-                  ),
-                ),
+           //--------------------------------------------------
+// ✅ LIVE BADGE IM TITEL (FIXED)
+//--------------------------------------------------
+title: Row(
+  children: [
+    Expanded(
+      child: Text(
+        "Adlerschießen verfolgen",
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: theme.colorScheme.onSurface,
+          fontWeight: FontWeight.bold,
+          fontSize: hasLive ? 17 : 15,
+        ),
+      ),
+    ),
 
-                if (hasLive)
-                  Container(
-                    margin: const EdgeInsets.only(left: 8),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      "LIVE",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-
+    if (hasLive)
+      Container(
+        margin: const EdgeInsets.only(left: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Text(
+          "LIVE",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+  ],
+),
             //--------------------------------------------------
             // ✅ TEXT
             //--------------------------------------------------

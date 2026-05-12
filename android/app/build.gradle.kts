@@ -8,6 +8,8 @@ plugins {
 android {
     namespace = "com.schuetzenradar.app"
     compileSdk = flutter.compileSdkVersion
+
+    // ✅ NDK FIX
     ndkVersion = "28.2.13676358"
 
     defaultConfig {
@@ -18,6 +20,9 @@ android {
         versionName = flutter.versionName
     }
 
+    //--------------------------------------------------
+    // ✅ JVM FIX (DEIN HAUPTPROBLEM)
+    //--------------------------------------------------
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -27,19 +32,13 @@ android {
         jvmTarget = "17"
     }
 
-    // ✅ KEIN signingConfigs mehr!
-    // CodeMagic übernimmt automatisch
-
+    //--------------------------------------------------
+    // ✅ BUILD TYPES
+    //--------------------------------------------------
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
             isShrinkResources = false
-
-            // Optional später:
-            // proguardFiles(
-            //     getDefaultProguardFile("proguard-android-optimize.txt"),
-            //     "proguard-rules.pro"
-            // )
         }
     }
 }
