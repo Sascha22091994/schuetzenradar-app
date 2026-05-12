@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart'; // ✅ NEU
+//import 'package:firebase_crashlytics/firebase_crashlytics.dart'; // ✅ NEU
 
 class TaxiScreen extends StatelessWidget {
   const TaxiScreen({super.key});
@@ -37,9 +37,9 @@ class TaxiScreen extends StatelessWidget {
         // ✅ DEZENTER CRASH TRIGGER (LONG PRESS)
         //--------------------------------------------------
         title: GestureDetector(
-          onLongPress: () {
-            FirebaseCrashlytics.instance.crash(); // 💥 nur bei lang drücken
-          },
+         // onLongPress: () {
+          //  FirebaseCrashlytics.instance.crash(); // 💥 nur bei lang drücken
+          //},
           child: const Text("Taxis im Kreis"),
         ),
       ),
