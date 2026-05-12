@@ -2,7 +2,7 @@ name: schuetzenfest_app
 description: "SchützenRadar App"
 publish_to: 'none'
 
-version: 1.0.0+2
+version: 1.0.0+4   # ✅ Version hochziehen für Apple Re-Upload!
 
 environment:
   sdk: ^3.11.1
@@ -31,38 +31,38 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.0
 
-  # ✅ nur falls du sie nutzt
   geocoding: ^2.1.0
   image_picker: ^1.0.7
   firebase_storage: ^12.4.10
 
 
 #--------------------------------------------------
-# ✅ APP ICON (ANDROID + IOS)
+# ✅ APP ICON (JETZT RICHTIG FÜR APPLE!)
 #--------------------------------------------------
 flutter_launcher_icons:
   android: true
   ios: true
 
-  image_path: "assets/icon.png"
+  # ✅ JETZT DAS RICHTIGE ICON!
+  image_path: "assets/appstore.png"
 
-  # ✅ WICHTIG für Android (macht Icon groß!)
+  # ✅ Android Adaptive Icon
   adaptive_icon_background: "#2E7D32"
-  adaptive_icon_foreground: "assets/icon.png"
+  adaptive_icon_foreground: "assets/appstore.png"
 
 
 #--------------------------------------------------
-# ✅ SPLASH SCREEN
+# ✅ SPLASH SCREEN (BLEIBT WIE ER WAR)
 #--------------------------------------------------
-
 flutter_native_splash:
   color: "#2E7D32"
+
+  # ✅ Splash darf Branding haben
   image: assets/appstore.png
 
   android_12:
-    image: assets/icon.png   # ⚠️ wichtig!
+    image: assets/appstore.png
     color: "#2E7D32"
-
 
   android: true
   ios: true
