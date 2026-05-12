@@ -1,13 +1,3 @@
-import java.util.Properties
-import java.io.FileInputStream
-
-val keystorePropertiesFile = rootProject.file("key.properties")
-val keystoreProperties = Properties()
-
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-}
-
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -16,14 +6,12 @@ plugins {
 }
 
 android {
-    
-
-	namespace = "com.schuetzenradar.app"
+    namespace = "com.schuetzenradar.app"
     compileSdk = flutter.compileSdkVersion
-	ndkVersion = "28.2.13676358"
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
-		applicationId = "com.schuetzenradar.app"
+        applicationId = "com.schuetzenradar.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -39,26 +27,19 @@ android {
         jvmTarget = "17"
     }
 
-    //--------------------------------------------------
-    // ✅ SIGNING CONFIG
-    //--------------------------------------------------
-    signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = file("keystore.jks")
-            storePassword = keystoreProperties["storePassword"] as String
-        }
-    }
+    // ✅ KEIN signingConfigs mehr!
+    // CodeMagic übernimmt automatisch
 
-    //--------------------------------------------------
-    // ✅ BUILD TYPES
-    //--------------------------------------------------
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
+
+            // Optional später:
+            // proguardFiles(
+            //     getDefaultProguardFile("proguard-android-optimize.txt"),
+            //     "proguard-rules.pro"
+            // )
         }
     }
 }
