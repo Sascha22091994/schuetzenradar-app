@@ -83,7 +83,7 @@ class LegalScreen extends StatelessWidget {
 
             "Weitere Informationen:\n",
           ),
-
+/*
 const SizedBox(height: 20),
 
 const Text(
@@ -98,7 +98,7 @@ const Text(
   "Die Zahlungsabwicklung erfolgt ausschließlich über PayPal. "
   "Es gelten die Datenschutzbestimmungen von PayPal.",
 ),
-
+*/
           //--------------------------------------------------
           // ✅ LINK ZU GITHUB PRIVACY
           //--------------------------------------------------
