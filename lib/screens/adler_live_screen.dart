@@ -25,11 +25,60 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
   String? viewerId;
 
-  //--------------------------------------------------
-  // ✅ CACHE
-  //--------------------------------------------------
   final Map<String, Map<String, dynamic>> _lastValidData = {};
 
+  //--------------------------------------------------
+  // ✅ AUTO RESET BEI 12H INAKTIVITÄT
+  //--------------------------------------------------
+  Future<void> _checkInactivity() async {
+    try {
+      final db = FirebaseFirestore.instance;
+
+      for (final eventType in ["jung", "alt"]) {
+        final doc = await db
+            .collection('adler_events')
+            .doc(widget.locationId)
+            .collection('events')
+            .doc(eventType)
+            .get();
+
+        if (!doc.exists) continue;
+
+        final data = doc.data()!;
+        final lastUpdate = data['lastUpdate'];
+        if (lastUpdate == null) continue;
+
+        final last = (lastUpdate as Timestamp).toDate();
+        final diff = DateTime.now().difference(last);
+
+        if (diff.inHours >= 12) {
+          await db
+              .collection('adler_events')
+              .doc(widget.locationId)
+              .collection('events')
+              .doc(eventType)
+              .set({
+            "isActive": false,
+            "shots": 0,
+            "kingName": null,
+            "results": {},
+            "participants": [],
+            "eventType": eventType,
+            "lastUpdate": FieldValue.serverTimestamp(),
+          }, SetOptions(merge: false));
+        }
+      }
+
+      await db.collection('locations').doc(widget.locationId).set({
+        "isLive": false,
+      }, SetOptions(merge: true));
+
+    } catch (e) {
+      debugPrint("Inactivity Check Error: $e");
+    }
+  }
+
+  //--------------------------------------------------
   @override
   void initState() {
     super.initState();
@@ -43,22 +92,19 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
+    _checkInactivity();
     _registerViewer();
   }
 
+  //--------------------------------------------------
   @override
   void dispose() {
     _lastValidData.clear();
-
-    // ❗ async safe fire & forget
     _removeViewer();
-
     _pulseController.dispose();
     super.dispose();
   }
 
-  //--------------------------------------------------
-  // ✅ REGISTER VIEWER (FIXED)
   //--------------------------------------------------
   Future<void> _registerViewer() async {
     try {
@@ -96,8 +142,6 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
           db.collection('adler_stats').doc(widget.locationId);
 
       await db.runTransaction((tx) async {
-
-        // ✅ FIRST READ
         final snap = await tx.get(statsRef);
 
         int current = 0;
@@ -115,11 +159,7 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
         total++;
         if (current > peak) peak = current;
 
-        // ✅ THEN WRITE
-        tx.set(ref, {
-          "joinedAt": FieldValue.serverTimestamp(),
-        });
-
+        tx.set(ref, {"joinedAt": FieldValue.serverTimestamp()});
         tx.set(statsRef, {
           "current": current,
           "peak": peak,
@@ -132,8 +172,6 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
     }
   }
 
-  //--------------------------------------------------
-  // ✅ REMOVE VIEWER (FIXED)
   //--------------------------------------------------
   Future<void> _removeViewer() async {
     if (viewerId == null) return;
@@ -151,25 +189,16 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
           db.collection('adler_stats').doc(widget.locationId);
 
       await db.runTransaction((tx) async {
-
-        // ✅ FIRST READ
         final snap = await tx.get(statsRef);
 
-        int current = 0;
-
-        if (snap.exists) {
-          final data = snap.data() as Map<String, dynamic>;
-          current = data['current'] ?? 0;
-        }
+        int current = snap.exists
+            ? (snap.data() as Map<String, dynamic>)['current'] ?? 0
+            : 0;
 
         if (current > 0) current--;
 
-        // ✅ THEN WRITE
         tx.delete(ref);
-
-        tx.set(statsRef, {
-          "current": current,
-        }, SetOptions(merge: true));
+        tx.set(statsRef, {"current": current}, SetOptions(merge: true));
       });
 
     } catch (e) {
@@ -195,9 +224,9 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
         children: [
           Row(
             children: [
-              _modeButton("Jung", "jung"),
-              _modeButton("Alt", "alt"),
-              _modeButton("Split", "split"),
+              _modeButton("Jungkönig", "jung"),
+              _modeButton("Altkönig", "alt"),
+              _modeButton("Beide", "split"),
             ],
           ),
           Expanded(
@@ -256,10 +285,7 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
         if (snapshot.hasData && snapshot.data!.exists) {
           final newData = snapshot.data!.data() as Map<String, dynamic>;
-
-          final isActive = newData['isActive'] == true;
-
-          if (isActive) {
+          if (newData['isActive'] == true) {
             _lastValidData[eventType] = newData;
           } else {
             _lastValidData.remove(eventType);
@@ -267,10 +293,8 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
         }
 
         final data = _lastValidData[eventType] ?? {};
-
         final shots = data['shots'] ?? 0;
         final king = data['kingName'];
-        final participants = (data['participants'] as List?) ?? [];
         final results = Map<String, dynamic>.from(data['results'] ?? {});
 
         final sorted = results.entries.toList()
@@ -279,44 +303,52 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
         return Column(
           children: [
+
+            if (king != null)
+              ScaleTransition(
+                scale: _pulse,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade400,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "👑 $king ist König mit $shots Schuss",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.black),
+                  ),
+                ),
+              ),
+
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  Text("Schüsse: $shots",
-                      style: const TextStyle(
-                          fontSize: 22,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold)),
-                ],
+              child: Text(
+                "Schüsse: $shots",
+                style: const TextStyle(color: Colors.white),
               ),
             ),
+
             Expanded(
-              child: data.isEmpty
-                  ? const Center(
-                      child: Text(
-                        "Warte auf Live Daten...",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    )
-                  : ListView(
-                      children: sorted.map((entry) {
-                        final part = entry.key;
-                        final r = entry.value;
+              child: ListView(
+                children: sorted.map((e) {
+                  final r = e.value;
+                  final time = r['time'] != null
+                      ? _formatTime(DateTime.parse(r['time']))
+                      : "--:--";
 
-                        final time = r['time'] != null
-                            ? _formatTime(DateTime.parse(r['time']))
-                            : "--:--";
-
-                        return ListTile(
-                          title: Text(part, style: const TextStyle(color: Colors.white)),
-                          subtitle: Text("${r['name']} • $time",
-                              style: const TextStyle(color: Colors.white70)),
-                          trailing: Text("${r['shots']}",
-                              style: const TextStyle(color: Colors.greenAccent)),
-                        );
-                      }).toList(),
-                    ),
+                  return ListTile(
+                    title: Text(e.key,
+                        style: const TextStyle(color: Colors.white)),
+                    subtitle: Text("${r['name']} • $time",
+                        style: const TextStyle(color: Colors.white70)),
+                    trailing: Text("${r['shots']}",
+                        style: const TextStyle(color: Colors.greenAccent)),
+                  );
+                }).toList(),
+              ),
             )
           ],
         );

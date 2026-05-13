@@ -19,6 +19,8 @@ class _NewsScreenState extends State<NewsScreen> {
   bool _showInfo = true;
   String selectedFilter = "all";
 
+  final Set<String> _expandedLiveEvents = {};
+
   @override
   void initState() {
     super.initState();
@@ -35,10 +37,7 @@ class _NewsScreenState extends State<NewsScreen> {
   Future<void> _hideInfo() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool("showInfo", false);
-
-    setState(() {
-      _showInfo = false;
-    });
+    setState(() => _showInfo = false);
   }
 
   //--------------------------------------------------
@@ -60,14 +59,13 @@ class _NewsScreenState extends State<NewsScreen> {
         .get();
 
     return (jung.data()?['isActive'] == true) ||
-           (alt.data()?['isActive'] == true);
+        (alt.data()?['isActive'] == true);
   }
 
   //--------------------------------------------------
-  // ✅ LIVE AUSWAHL DIALOG
+  // ✅ LIVE AUSWAHL
   //--------------------------------------------------
   Future<void> _openLiveSelection() async {
-
     final locationsSnapshot =
         await FirebaseFirestore.instance.collection('locations').get();
 
@@ -80,15 +78,10 @@ class _NewsScreenState extends State<NewsScreen> {
     final activeMap = Map.fromEntries(results);
     final docs = locationsSnapshot.docs;
 
-    final activeDocs =
-        docs.where((doc) => activeMap[doc.id] == true).toList();
-
-    final inactiveDocs =
-        docs.where((doc) => activeMap[doc.id] != true).toList();
-
-    final sortedDocs = [...activeDocs, ...inactiveDocs];
-
-    final theme = Theme.of(context);
+    final sortedDocs = [
+      ...docs.where((d) => activeMap[d.id] == true),
+      ...docs.where((d) => activeMap[d.id] != true),
+    ];
 
     showDialog(
       context: context,
@@ -97,64 +90,38 @@ class _NewsScreenState extends State<NewsScreen> {
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
-            children: [
-
-              if (activeDocs.isNotEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    "🔴 LIVE AKTUELL",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+            children: sortedDocs.map((doc) {
+              final isActive = activeMap[doc.id] == true;
+              return ListTile(
+                title: Text(doc['name'] ?? ""),
+                subtitle: Text(
+                  isActive ? "🔥 Live aktiv" : "Keine aktuellen Daten",
                 ),
-
-              ...sortedDocs.map((doc) {
-
-                final isActive = activeMap[doc.id] == true;
-
-                return Card(
-                  color: isActive
-                      ? (theme.brightness == Brightness.dark
-                          ? Colors.green.shade900
-                          : Colors.green.shade50)
-                      : null,
-                  child: ListTile(
-                    title: Text(
-                      doc['name'] ?? "",
-                      style: TextStyle(color: theme.colorScheme.onSurface),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AdlerLiveScreen(
+                        locationId: doc.id,
+                        locationName: doc['name'] ?? "",
+                      ),
                     ),
-                    subtitle: Text(
-                      isActive
-                          ? "🔥 Live aktiv"
-                          : "Keine aktuellen Daten",
-                      style: TextStyle(color: theme.colorScheme.onSurface),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AdlerLiveScreen(
-                            locationId: doc.id,
-                            locationName: doc['name'] ?? "",
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              }),
-            ],
+                  );
+                },
+              );
+            }).toList(),
           ),
         ),
       ),
     );
   }
 
-  //--------------------------------------------------
-  String _formatDate(DateTime d) {
-    return "${d.day}.${d.month}.${d.year}";
-  }
+  String _formatDate(DateTime d) =>
+      "${d.day}.${d.month}.${d.year}";
+
+  String _formatTime(DateTime d) =>
+      "${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}";
 
   //--------------------------------------------------
   @override
@@ -173,29 +140,19 @@ class _NewsScreenState extends State<NewsScreen> {
         ],
       ),
 
-      //--------------------------------------------------
-      // FAB
-      //--------------------------------------------------
       floatingActionButton: AdminService.isAdmin
-          ? FloatingActionButton(
-              onPressed: () {},
-              child: const Icon(Icons.add),
-            )
+          ? FloatingActionButton(onPressed: () {}, child: const Icon(Icons.add))
           : FloatingActionButton.extended(
               onPressed: () => EmailService.sendFeedback(),
               icon: const Icon(Icons.add),
               label: const Text("News melden"),
             ),
 
-      //--------------------------------------------------
-      // STREAM
-      //--------------------------------------------------
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('news')
             .orderBy('date', descending: true)
             .snapshots(),
-
         builder: (context, snapshot) {
 
           if (!snapshot.hasData) {
@@ -204,17 +161,13 @@ class _NewsScreenState extends State<NewsScreen> {
 
           final allDocs = snapshot.data!.docs;
 
-          //--------------------------------------------------
-          // ✅ FILTER
-          //--------------------------------------------------
           final filteredDocs = allDocs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-
             if (selectedFilter == "highlights") {
               return data['isImportant'] == true;
             }
             if (selectedFilter == "live") {
-              return data['type'] == "live";
+              return data['type'] == "liveEvent";
             }
             return true;
           }).toList();
@@ -238,16 +191,11 @@ class _NewsScreenState extends State<NewsScreen> {
                   ),
                   child: Stack(
                     children: [
-                      Text(
+                      const Text(
                         "📢 NEWS & COMMUNITY\n\n"
-                        "Alles rund um dein Schützenfest:\n\n"
                         "🔥 Aktuelle Meldungen\n"
-                        "⚡ Live Updates direkt vom Fest (z.B. Adlerschießen)\n"
-                        "👑 Wichtige Highlights vor Ort\n\n"
-                        "👉 Teile deine Infos mit der Community!",
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurface,
-                        ),
+                        "⚡ Live‑Ticker vom Fest\n"
+                        "👑 Wichtige Highlights\n",
                       ),
                       Positioned(
                         right: 0,
@@ -261,124 +209,136 @@ class _NewsScreenState extends State<NewsScreen> {
                 ),
 
               //--------------------------------------------------
-              // FILTER BUTTONS
+              // FILTER
               //--------------------------------------------------
-              SizedBox(
-                height: 50,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _filterButton("Alle", "all"),
-                    _filterButton("🔥 Wichtig", "highlights"),
-                    _filterButton("⚡ Live", "live"),
-                  ],
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _filterButton("Alle", "all"),
+                  _filterButton("🔥 Wichtig", "highlights"),
+                  _filterButton("⚡ Live", "live"),
+                ],
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
-        //--------------------------------------------------
-// LIVE CARD (FIXED + AUFFÄLLIG)
+              //--------------------------------------------------
+// 🔴 LIVE PRESENTER (IMMER SICHTBAR)
 //--------------------------------------------------
 FutureBuilder(
   future: FirebaseFirestore.instance.collection('locations').get(),
-  builder: (context, snapshot) {
-
-    if (!snapshot.hasData) return const SizedBox();
-
-    final docs = snapshot.data!.docs;
+  builder: (context, snap) {
+    if (!snap.hasData) return const SizedBox();
 
     return FutureBuilder(
       future: Future.wait(
-        docs.map((doc) => _isLocationLive(doc.id)),
+        snap.data!.docs.map((d) => _isLocationLive(d.id)),
       ),
       builder: (context, liveSnap) {
 
         if (!liveSnap.hasData) return const SizedBox();
 
-        final results = liveSnap.data as List<bool>;
-        final hasLive = results.contains(true);
+        final hasLive = (liveSnap.data as List<bool>).contains(true);
 
-        return Card(
-          elevation: hasLive ? 6 : 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: hasLive
-                ? BorderSide(color: Colors.redAccent, width: 2)
-                : BorderSide.none,
+        //--------------------------------------------------
+        // ✅ FARBEN
+        //--------------------------------------------------
+        final bgColor = hasLive
+            ? Colors.red.shade400
+            : Colors.grey.shade300;
+
+        final textColor = hasLive
+            ? Colors.white
+            : Colors.black87;
+
+        final subColor = hasLive
+            ? Colors.white70
+            : Colors.black54;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(14),
           ),
 
-          //--------------------------------------------------
-          // ✅ DEUTLICH SICHTBAR
-          //--------------------------------------------------
-          color: hasLive
-              ? (theme.brightness == Brightness.dark
-                  ? Colors.red.shade800
-                  : Colors.red.shade200)
-              : null,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
 
-          child: ListTile(
-            leading: Icon(
-              Icons.visibility,
-              size: 28,
-              color: hasLive ? Colors.redAccent : Colors.grey,
+            //--------------------------------------------------
+            // ✅ CLICK NUR WENN LIVE
+            //--------------------------------------------------
+            onTap: hasLive ? _openLiveSelection : null,
+
+            child: Row(
+              children: [
+
+                Icon(
+                  hasLive ? Icons.visibility : Icons.info_outline,
+                  color: textColor,
+                  size: 28,
+                ),
+
+                const SizedBox(width: 12),
+
+                //--------------------------------------------------
+                // TEXT BLOCK
+                //--------------------------------------------------
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      Text(
+                        hasLive
+                            ? "Live‑Ticker läuft"
+                            : "Keine Live‑Events aktiv",
+                        style: TextStyle(
+                          color: textColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      Text(
+                        hasLive
+                            ? "Adlerschießen jetzt live verfolgen"
+                            : "Aktuell finden keine Live‑Events statt",
+                        style: TextStyle(
+                          color: subColor,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                //--------------------------------------------------
+                // BADGE
+                //--------------------------------------------------
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: hasLive
+                        ? Colors.red.shade700
+                        : Colors.grey.shade500,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    hasLive ? "LIVE" : "INFO",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
             ),
-
-           //--------------------------------------------------
-// ✅ LIVE BADGE IM TITEL (FIXED)
-//--------------------------------------------------
-title: Row(
-  children: [
-    Expanded(
-      child: Text(
-        "Adlerschießen verfolgen",
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: theme.colorScheme.onSurface,
-          fontWeight: FontWeight.bold,
-          fontSize: hasLive ? 17 : 15,
-        ),
-      ),
-    ),
-
-    if (hasLive)
-      Container(
-        margin: const EdgeInsets.only(left: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: Colors.red,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Text(
-          "LIVE",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-  ],
-),
-            //--------------------------------------------------
-            // ✅ TEXT
-            //--------------------------------------------------
-            subtitle: Text(
-              hasLive
-                  ? "🔥 Gerade aktiv! Jetzt reinschauen!"
-                  : "Momentan kein Live Event",
-              style: TextStyle(
-                color: theme.colorScheme.onSurface,
-                fontWeight: hasLive ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-
-            trailing: const Icon(Icons.arrow_forward_ios),
-
-            //--------------------------------------------------
-            // ✅ CLICK
-            //--------------------------------------------------
-            onTap: _openLiveSelection,
           ),
         );
       },
@@ -387,34 +347,140 @@ title: Row(
 ),
 
               //--------------------------------------------------
-              // NEWS LIST
+              // NEWS
               //--------------------------------------------------
               ...filteredDocs.map((doc) {
 
                 final data = doc.data() as Map<String, dynamic>;
-                final news = NewsItem.fromMap(data);
 
+                // ✅ LIVE EVENT
+                if (data['type'] == 'liveEvent') {
+                  final rawUpdates = List.from(data['updates'] ?? []);
+
+                  final updates = rawUpdates.map<Map<String, dynamic>>((u) {
+                    if (u is Map<String, dynamic>) return u;
+                    return {"text": u.toString(), "time": null};
+                  }).toList();
+
+                  final isActive = data['isActive'] == true;
+                  final expanded = _expandedLiveEvents.contains(doc.id);
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    color: isActive
+                        ? Colors.red.shade50
+                        : Colors.green.shade50,
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: Icon(
+                            Icons.whatshot,
+                            color: isActive ? Colors.red : Colors.green,
+                          ),
+                          title: Text(
+                            "${data['location']} – Adlerschießen",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: isActive ? Colors.red : Colors.green,
+                            ),
+                          ),
+                          subtitle: Text(
+                            isActive
+                                ? "🔴 Live‑Ticker aktiv – Treffer in Echtzeit"
+                                : "✅ Event beendet – Ergebnisse vollständig",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  isActive ? Colors.red : Colors.green,
+                            ),
+                          ),
+                          trailing: Icon(
+                            expanded
+                                ? Icons.expand_less
+                                : Icons.expand_more,
+                            color: isActive ? Colors.red : Colors.green,
+                          ),
+                          onTap: () {
+                            setState(() {
+                              expanded
+                                  ? _expandedLiveEvents.remove(doc.id)
+                                  : _expandedLiveEvents.add(doc.id);
+                            });
+                          },
+                        ),
+
+                        if (expanded)
+                          Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                const Divider(height: 20),
+
+                                ...updates.map((u) {
+                                  final text = u['text'] ?? '';
+                                  final time = DateTime.tryParse(
+                                      u['time'] ?? '');
+                                  final isKing =
+                                      text.contains("👑");
+
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 4),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            text,
+                                            style: TextStyle(
+                                              fontWeight: isKing
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                              color: isKing
+                                                  ? Colors.amber.shade800
+                                                  : Colors.black87,
+                                            ),
+                                          ),
+                                        ),
+                                        if (time != null)
+                                          Text(
+                                            _formatTime(time),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }
+
+                // ✅ NORMALE NEWS
+                final news = NewsItem.fromMap(data);
                 final important = data['isImportant'] == true;
 
                 return Card(
                   color: important
-                      ? (theme.brightness == Brightness.dark
-                          ? const Color(0xFF3A2E00)
-                          : Colors.amber.shade50)
+                      ? Colors.amber.shade50
                       : null,
                   child: ListTile(
                     title: Text(
                       news.title,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                          const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
                       "${_formatDate(news.date)}\n${news.text}",
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                      ),
                     ),
                   ),
                 );
@@ -428,27 +494,21 @@ title: Row(
 
   //--------------------------------------------------
   Widget _filterButton(String label, String value) {
-
     final active = selectedFilter == value;
-    final theme = Theme.of(context);
-
     return GestureDetector(
       onTap: () => setState(() => selectedFilter = value),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: active
-              ? Colors.green
-              : (theme.brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade200),
+          color: active ? Colors.green : Colors.grey.shade300,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: active ? Colors.white : theme.colorScheme.onSurface,
+            color: active ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
           ),
         ),

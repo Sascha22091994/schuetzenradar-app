@@ -16,8 +16,6 @@ class FestivalDetailScreen extends StatelessWidget {
   });
 
   //--------------------------------------------------
-  // ✅ SHARE
-  //--------------------------------------------------
   void _shareEvent() {
     final text =
         "🎉 ${festival.name}\n\n"
@@ -29,13 +27,11 @@ class FestivalDetailScreen extends StatelessWidget {
   }
 
   //--------------------------------------------------
-  // GOOGLE MAPS
-  //--------------------------------------------------
   Future<void> _openMaps() async {
     final query = Uri.encodeComponent(festival.address);
 
     final url = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$query', // ✅ FIX
+      'https://www.google.com/maps/search/?api=1&query=$query',
     );
 
     await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -51,7 +47,7 @@ class FestivalDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
 
- 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -69,33 +65,60 @@ class FestivalDetailScreen extends StatelessWidget {
         children: [
 
           //--------------------------------------------------
-          // HEADER
+          // ✅ HEADER (FINAL)
           //--------------------------------------------------
           Container(
-            width: double.infinity,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.green,
+              gradient: LinearGradient(
+                colors: [
+                  Colors.green.shade700,
+                  Colors.green.shade500,
+                ],
+              ),
               borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
 
-                Text(
-                  festival.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+
+                    Expanded(
+                      child: Text(
+                        festival.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 6),
 
-                Text(
-                  festival.address,
-                  style: const TextStyle(color: Colors.white70),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on,
+                        color: Colors.white70, size: 16),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        festival.address,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -104,9 +127,12 @@ class FestivalDetailScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           //--------------------------------------------------
-          // DATUM + ADRESSE
+          // ✅ DATEN CARD
           //--------------------------------------------------
           Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Column(
               children: [
 
@@ -116,7 +142,7 @@ class FestivalDetailScreen extends StatelessWidget {
                   subtitle: Text(_formatDate()),
                 ),
 
-                const Divider(height: 0),
+                Divider(height: 1, color: Colors.grey.shade300),
 
                 ListTile(
                   leading: const Icon(Icons.location_on),
@@ -131,18 +157,21 @@ class FestivalDetailScreen extends StatelessWidget {
           const SizedBox(height: 16),
 
           //--------------------------------------------------
-          // MUSIK
+          // ✅ MUSIKPROGRAMM
           //--------------------------------------------------
           if (festival.musicDays.isNotEmpty)
             Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
 
                     const Text(
-                      "Musikprogramm",
+                      "🎵 Musikprogramm",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -167,7 +196,7 @@ class FestivalDetailScreen extends StatelessWidget {
           const SizedBox(height: 16),
 
           //--------------------------------------------------
-          // ORT BUTTON
+          // ✅ ORT BUTTON (FINAL)
           //--------------------------------------------------
           FutureBuilder<DocumentSnapshot>(
             future: FirebaseFirestore.instance
@@ -186,7 +215,7 @@ class FestivalDetailScreen extends StatelessWidget {
               );
 
               return InkWell(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -196,24 +225,44 @@ class FestivalDetailScreen extends StatelessWidget {
                     ),
                   );
                 },
-
                 child: Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(12),
+                    color: isDark
+                        ? Colors.green.shade900
+                        : Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.green.shade700
+                          : Colors.green,
+                      width: 1.5,
+                    ),
                   ),
                   child: Row(
                     children: [
 
-                      const Icon(Icons.location_on, color: Colors.green),
+                      Icon(
+                        Icons.location_on,
+                        color: isDark
+                            ? Colors.green.shade300
+                            : Colors.green,
+                      ),
+
                       const SizedBox(width: 10),
 
                       const Expanded(
-                        child: Text("Mehr Infos zum Ort ansehen"),
+                        child: Text(
+                          "Mehr Infos zum Ort ansehen",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
 
-                      const Icon(Icons.arrow_forward_ios, size: 14),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: isDark ? Colors.white70 : Colors.black54,
+                      ),
                     ],
                   ),
                 ),
@@ -224,7 +273,7 @@ class FestivalDetailScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           //--------------------------------------------------
-          // ✅ FLYER (WIEDER DRIN!)
+          // ✅ FLYER (ZOOMBAR)
           //--------------------------------------------------
           if (festival.flyerUrl.isNotEmpty)
             Column(
@@ -232,7 +281,7 @@ class FestivalDetailScreen extends StatelessWidget {
               children: [
 
                 const Text(
-                  "Flyer & Infos",
+                  "📄 Flyer & Infos",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -247,13 +296,10 @@ class FestivalDetailScreen extends StatelessWidget {
                       context: context,
                       builder: (_) => Dialog(
                         backgroundColor: Colors.black,
-                        child: GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: InteractiveViewer(
-                            child: Image.network(
-                              festival.flyerUrl, // ✅ ORIGINAL wieder drin
-                              fit: BoxFit.contain,
-                            ),
+                        child: InteractiveViewer(
+                          child: Image.network(
+                            festival.flyerUrl,
+                            fit: BoxFit.contain,
                           ),
                         ),
                       ),
@@ -261,29 +307,15 @@ class FestivalDetailScreen extends StatelessWidget {
                   },
 
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     child: Image.network(
                       festival.flyerUrl,
-
+                      fit: BoxFit.cover,
                       loadingBuilder: (context, child, progress) {
                         if (progress == null) return child;
-
                         return const SizedBox(
                           height: 200,
-                          child: Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      },
-
-                      errorBuilder: (context, error, stackTrace) {
-                        return const SizedBox(
-                          height: 200,
-                          child: Center(
-                            child: Text(
-                              "Flyer konnte nicht geladen werden",
-                            ),
-                          ),
+                          child: Center(child: CircularProgressIndicator()),
                         );
                       },
                     ),
@@ -295,12 +327,22 @@ class FestivalDetailScreen extends StatelessWidget {
             ),
 
           //--------------------------------------------------
-          // NAVIGATION
+          // ✅ PRIMARY CTA
           //--------------------------------------------------
-          ElevatedButton.icon(
-            onPressed: _openMaps,
-            icon: const Icon(Icons.navigation),
-            label: const Text('Navigation starten'),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _openMaps,
+              icon: const Icon(Icons.navigation),
+              label: const Text("Navigation starten"),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Colors.green,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
           ),
 
           const SizedBox(height: 20),
