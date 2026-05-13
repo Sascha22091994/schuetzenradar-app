@@ -192,11 +192,51 @@ return await db.collection('news').add({
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Adler – ${widget.locationName} (${selectedEvent.toUpperCase()})"),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _resetGame),
+  elevation: 0,
+  backgroundColor: Colors.green.shade700,
+
+  flexibleSpace: Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.green.shade800,
+          Colors.green.shade600,
         ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
+    ),
+  ),
+
+  title: Row(
+    children: [
+      const Icon(Icons.my_location, color: Colors.white, size: 35),
+      const SizedBox(width: 8),
+
+      Expanded(
+        child: Text(
+          "${widget.locationName} • ${selectedEvent.toUpperCase()}",
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 30,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+    ],
+  ),
+
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.refresh),
+      tooltip: "Reset",
+      onPressed: _resetGame,
+    ),
+  ],
+),
+
       body: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(

@@ -34,18 +34,49 @@ class ContactScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kontakt'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.mail_outline),
-            tooltip: 'Feedback senden',
-            onPressed: () {
-              EmailService.sendFeedback();
-            },
-          ),
+     appBar: AppBar(
+  elevation: 0,
+  backgroundColor: Colors.green.shade700,
+
+  flexibleSpace: Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.green.shade800,
+          Colors.green.shade600,
         ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
+    ),
+  ),
+
+  title: Row(
+    children: const [
+      Icon(Icons.contact_mail_outlined, color: Colors.white, size: 35),
+      SizedBox(width: 8),
+      Text(
+        "Kontakt",
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 30,
+          letterSpacing: 0.4,
+        ),
+      ),
+    ],
+  ),
+
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.campaign_outlined),
+      tooltip: 'Feedback senden',
+      onPressed: () {
+        EmailService.sendFeedback();
+      },
+    ),
+  ],
+),
+
 
       body: ListView(
         padding: const EdgeInsets.all(16),

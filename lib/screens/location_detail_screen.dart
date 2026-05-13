@@ -27,8 +27,42 @@ class LocationDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(location.name),
+  elevation: 0,
+  backgroundColor: Colors.green.shade700,
+
+  flexibleSpace: Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.green.shade800,
+          Colors.green.shade600,
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
+    ),
+  ),
+
+  title: Row(
+    children: [
+      const Icon(Icons.location_on, color: Colors.white, size: 35),
+      const SizedBox(width: 8),
+
+      Expanded(
+        child: Text(
+          location.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 30,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+    ],
+  ),
+),
 
       body: ListView(
         padding: const EdgeInsets.all(12),

@@ -6,6 +6,7 @@ import '../models/news.dart';
 import '../services/email_service.dart';
 import '../services/admin_service.dart';
 import 'adler_live_screen.dart';
+import '../screens/contact_screen.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -131,14 +132,45 @@ class _NewsScreenState extends State<NewsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("News"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.mail_outline),
-            onPressed: () => EmailService.sendFeedback(),
-          ),
+  elevation: 0,
+  backgroundColor: Colors.green.shade700,
+
+  flexibleSpace: Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.green.shade800,
+          Colors.green.shade600,
         ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
+    ),
+  ),
+
+  title: Row(
+    children: const [
+      Icon(Icons.radar, color: Colors.white, size: 35),
+      SizedBox(width: 8),
+      Text(
+        "News",
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 30,
+          letterSpacing: 0.4,
+        ),
+      ),
+    ],
+  ),
+
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.campaign_outlined),
+      onPressed: () => EmailService.sendFeedback(),
+    ),
+  ],
+),
+
 
       floatingActionButton: AdminService.isAdmin
           ? FloatingActionButton(onPressed: () {}, child: const Icon(Icons.add))
@@ -181,49 +213,109 @@ class _NewsScreenState extends State<NewsScreen> {
             padding: const EdgeInsets.all(12),
             children: [
 
-              if (_showInfo)
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: theme.brightness == Brightness.dark
-                        ? const Color(0xFF1E1E1E)
-                        : const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Stack(
-                    children: [
-                      const Text(
-                        "📢 NEWS & COMMUNITY\n\n"
-                        "🔥 Aktuelle Meldungen\n"
-                        "⚡ Live‑Ticker vom Fest\n"
-                        "👑 Wichtige Highlights\n",
-                      ),
-                      Positioned(
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _hideInfo,
-                          child: const Icon(Icons.close),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+if (_showInfo)
+  Container(
+    padding: const EdgeInsets.all(14),
+    margin: const EdgeInsets.only(bottom: 14),
+    decoration: BoxDecoration(
+      color: theme.brightness == Brightness.dark
+          ? const Color(0xFF1E1E1E)
+          : const Color(0xFFE8F5E9),
+      borderRadius: BorderRadius.circular(14),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
+        ),
+      ],
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _filterButton("Alle", "all"),
-                  _filterButton("🔥 Wichtig", "highlights"),
-                  _filterButton("⚡ Live", "live"),
-                ],
+        //--------------------------------------------------
+        // ICON
+        //--------------------------------------------------
+        const Icon(
+          Icons.sensors,
+          size: 22,
+          color: Colors.green,
+        ),
+
+        const SizedBox(width: 10),
+
+        //--------------------------------------------------
+        // CONTENT
+        //--------------------------------------------------
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              const Text(
+                "Willkommen & danke, dass du SchützenRadar nutzt! 🙌",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 6),
 
+              const Text(
+                "🦅 Adlerschießen eintragen & live verfolgen\n"
+                "👑 Jungkönig & Altkönig in Echtzeit\n"
+                "📅 Alle Schützenfeste im Kreis + Infos\n"
+                "📢 News & Highlights rund ums Fest",
+                style: TextStyle(height: 1.35),
+              ),
 
-const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
+              //--------------------------------------------------
+              // ✅ CLICKABLE LINK
+              //--------------------------------------------------
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ContactScreen(),
+                    ),
+                  );
+                },
+                child: const Text(
+                  
+                  "💬 Fehlt eine Veranstaltung oder ist dir etwas aufgefallen?\n"
+                "→ Schau gern auf die Kontaktseite – ich freue mich auf deine Nachricht 😊",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        //--------------------------------------------------
+        // CLOSE BUTTON (FIXED POSITION)
+        //--------------------------------------------------
+        GestureDetector(
+          onTap: _hideInfo,
+          child: const Padding(
+            padding: EdgeInsets.only(left: 6, top: 2),
+            child: Icon(
+              Icons.close,
+              size: 18,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
 //--------------------------------------------------
 // 🔴 LIVE PRESENTER (IMMER SICHTBAR)
 //--------------------------------------------------

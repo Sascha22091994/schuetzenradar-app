@@ -16,8 +16,41 @@ class LegalScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Impressum & Datenschutz"),
+  elevation: 0,
+  backgroundColor: Colors.green.shade700,
+
+  flexibleSpace: Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          Colors.green.shade800,
+          Colors.green.shade600,
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
+    ),
+  ),
+
+  title: Row(
+    children: const [
+      Icon(Icons.privacy_tip_outlined, color: Colors.white, size: 35),
+      SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          "Impressum & Datenschutz",
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 30,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+    ],
+  ),
+),
+
 
       body: ListView(
         padding: const EdgeInsets.all(16),
