@@ -164,8 +164,13 @@ class _NewsScreenState extends State<NewsScreen> {
           final filteredDocs = allDocs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             if (selectedFilter == "highlights") {
-              return data['isImportant'] == true;
-            }
+  final isKingSet =
+      (data['kingName'] != null &&
+       data['kingName'].toString().isNotEmpty);
+
+  return data['isImportant'] == true || isKingSet;
+}
+
             if (selectedFilter == "live") {
               return data['type'] == "liveEvent";
             }
@@ -176,9 +181,6 @@ class _NewsScreenState extends State<NewsScreen> {
             padding: const EdgeInsets.all(12),
             children: [
 
-              //--------------------------------------------------
-              // INFO BOX
-              //--------------------------------------------------
               if (_showInfo)
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -208,9 +210,6 @@ class _NewsScreenState extends State<NewsScreen> {
                   ),
                 ),
 
-              //--------------------------------------------------
-              // FILTER
-              //--------------------------------------------------
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -222,7 +221,10 @@ class _NewsScreenState extends State<NewsScreen> {
 
               const SizedBox(height: 12),
 
-              //--------------------------------------------------
+
+const SizedBox(height: 12),
+
+//--------------------------------------------------
 // 🔴 LIVE PRESENTER (IMMER SICHTBAR)
 //--------------------------------------------------
 FutureBuilder(
@@ -240,9 +242,6 @@ FutureBuilder(
 
         final hasLive = (liveSnap.data as List<bool>).contains(true);
 
-        //--------------------------------------------------
-        // ✅ FARBEN
-        //--------------------------------------------------
         final bgColor = hasLive
             ? Colors.red.shade400
             : Colors.grey.shade300;
@@ -265,10 +264,6 @@ FutureBuilder(
 
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
-
-            //--------------------------------------------------
-            // ✅ CLICK NUR WENN LIVE
-            //--------------------------------------------------
             onTap: hasLive ? _openLiveSelection : null,
 
             child: Row(
@@ -282,9 +277,6 @@ FutureBuilder(
 
                 const SizedBox(width: 12),
 
-                //--------------------------------------------------
-                // TEXT BLOCK
-                //--------------------------------------------------
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,9 +308,6 @@ FutureBuilder(
                   ),
                 ),
 
-                //--------------------------------------------------
-                // BADGE
-                //--------------------------------------------------
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 4),
@@ -346,151 +335,199 @@ FutureBuilder(
   },
 ),
 
-              //--------------------------------------------------
-              // NEWS
-              //--------------------------------------------------
-              ...filteredDocs.map((doc) {
 
-                final data = doc.data() as Map<String, dynamic>;
 
-                // ✅ LIVE EVENT
-                if (data['type'] == 'liveEvent') {
-                  final rawUpdates = List.from(data['updates'] ?? []);
+//--------------------------------------------------
+// ✅ NEWS
+//--------------------------------------------------
+...filteredDocs.map((doc) {
+  final data = doc.data() as Map<String, dynamic>;
 
-                  final updates = rawUpdates.map<Map<String, dynamic>>((u) {
-                    if (u is Map<String, dynamic>) return u;
-                    return {"text": u.toString(), "time": null};
-                  }).toList();
+  // ✅ LIVE EVENT
+  if (data['type'] == 'liveEvent') {
 
-                  final isActive = data['isActive'] == true;
-                  final expanded = _expandedLiveEvents.contains(doc.id);
+    final isActive = data['isActive'] == true;
+    final expanded = _expandedLiveEvents.contains(doc.id);
 
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    color: isActive
-                        ? Colors.red.shade50
-                        : Colors.green.shade50,
-                    child: Column(
-                      children: [
-                        ListTile(
-                          leading: Icon(
-                            Icons.whatshot,
-                            color: isActive ? Colors.red : Colors.green,
-                          ),
-                          title: Text(
-                            "${data['location']} – Adlerschießen",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: isActive ? Colors.red : Colors.green,
+    final locationId =
+        (data['locationId'] ??
+         data['location'] ??
+         "")
+        .toString()
+        .toLowerCase()
+        .trim();
+
+    final isKingSet =
+    (data['kingName'] ?? "").toString().isNotEmpty;
+
+return Card(
+  margin: const EdgeInsets.only(bottom: 12),
+
+  // ✅ DAS IST DIE GANZE LOGIK
+  color: isKingSet
+      ? Colors.amber.shade100
+      : isActive
+          ? Colors.orange.shade50
+          : Colors.grey.shade200,
+
+  child: Column(
+    children: [
+
+ListTile(
+  leading: Icon(
+    Icons.whatshot,
+color: isKingSet
+    ? Colors.amber
+    : isActive
+        ? Colors.orange
+        : Colors.grey.shade500,
+
+
+  ),
+
+  title: Text(
+    isKingSet
+        ? "👑 ${(data['location'] ?? "Unbekannt")} – König steht fest!"
+        : "${(data['location'] ?? "Unbekannt")} – Adlerschießen",
+    style: TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: 16,
+      color: isActive ? Colors.red : Colors.green,
+    ),
+  ),
+
+subtitle: Text(
+  isKingSet
+      ? "👑 ${(data['kingName'] ?? "").toString()} ist König!"
+      : (isActive
+          ? "🟠 Live‑Ticker aktiv – Treffer in Echtzeit"
+          : "Keine Live‑Events aktiv"),
+  style: TextStyle(
+    fontWeight: FontWeight.w600,
+    color: isKingSet
+    ? Colors.amber.shade800
+    : isActive
+        ? Colors.orange.shade700
+        : Colors.grey.shade500,
+
+  ),
+),
+
+  trailing: Icon(
+    expanded
+        ? Icons.expand_less
+        : Icons.expand_more,
+    color: isActive ? Colors.red : Colors.green,
+  ),
+
+  onTap: () {
+    setState(() {
+      expanded
+          ? _expandedLiveEvents.remove(doc.id)
+          : _expandedLiveEvents.add(doc.id);
+    });
+  },
+),
+
+          //--------------------------------------------------
+          // ✅ EXPANDED CONTENT
+          //--------------------------------------------------
+          if (expanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Column(
+                children: [
+                  const Divider(height: 20),
+
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      //---------------------------------------
+                      // 🧒 JUNG
+                      //---------------------------------------
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "🧒 Jungkönig",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
                             ),
-                          ),
-                          subtitle: Text(
-                            isActive
-                                ? "🔴 Live‑Ticker aktiv – Treffer in Echtzeit"
-                                : "✅ Event beendet – Ergebnisse vollständig",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color:
-                                  isActive ? Colors.red : Colors.green,
-                            ),
-                          ),
-                          trailing: Icon(
-                            expanded
-                                ? Icons.expand_less
-                                : Icons.expand_more,
-                            color: isActive ? Colors.red : Colors.green,
-                          ),
-                          onTap: () {
-                            setState(() {
-                              expanded
-                                  ? _expandedLiveEvents.remove(doc.id)
-                                  : _expandedLiveEvents.add(doc.id);
-                            });
-                          },
+                            const SizedBox(height: 6),
+
+                            ..._buildLiveHits(locationId, "jung"),
+                          ],
                         ),
+                      ),
 
-                        if (expanded)
-                          Padding(
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                              children: [
-                                const Divider(height: 20),
+                      const SizedBox(width: 12),
 
-                                ...updates.map((u) {
-                                  final text = u['text'] ?? '';
-                                  final time = DateTime.tryParse(
-                                      u['time'] ?? '');
-                                  final isKing =
-                                      text.contains("👑");
-
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 4),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            text,
-                                            style: TextStyle(
-                                              fontWeight: isKing
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
-                                              color: isKing
-                                                  ? Colors.amber.shade800
-                                                  : Colors.black87,
-                                            ),
-                                          ),
-                                        ),
-                                        if (time != null)
-                                          Text(
-                                            _formatTime(time),
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ],
+                      //---------------------------------------
+                      // 👑 ALT
+                      //---------------------------------------
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "👑 Altkönig",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.deepOrange,
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
-                  );
-                }
+                            const SizedBox(height: 6),
 
-                // ✅ NORMALE NEWS
-                final news = NewsItem.fromMap(data);
-                final important = data['isImportant'] == true;
-
-                return Card(
-                  color: important
-                      ? Colors.amber.shade50
-                      : null,
-                  child: ListTile(
-                    title: Text(
-                      news.title,
-                      style:
-                          const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      "${_formatDate(news.date)}\n${news.text}",
-                    ),
+                            ..._buildLiveHits(locationId, "alt"),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              }),
-            ],
-          );
-        },
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
+
+  //--------------------------------------------------
+  // ✅ NORMALE NEWS
+  //--------------------------------------------------
+  final news = NewsItem.fromMap(data);
+  final important = data['isImportant'] == true;
+
+  return Card(
+    color: important ? Colors.amber.shade50 : null,
+    child: ListTile(
+      title: Text(
+        news.title,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(
+        "${_formatDate(news.date)}\n${news.text}",
+      ),
+    ),
+  );
+
+
+}).toList(),
+],
+);
+},
+      ),
+    );
+  }
+
+// ✅ DAS WAR DEIN FEHLER
+
+
+
 
   //--------------------------------------------------
   Widget _filterButton(String label, String value) {
@@ -515,4 +552,137 @@ FutureBuilder(
       ),
     );
   }
+
+  //--------------------------------------------------
+// ✅ LIVE TREFFER DIREKT AUS FIREBASE
+//--------------------------------------------------
+List<Widget> _buildLiveHits(String locationId, String eventType) {
+  if (locationId.trim().isEmpty) {
+  return [];
+}
+  return [
+    StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('adler_events')
+          .doc(locationId)
+          .collection('events')
+          .doc(eventType)
+          .snapshots(),
+      builder: (context, snapshot) {
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const SizedBox();
+        }
+
+        final raw = snapshot.data!.data();
+
+if (raw == null || raw is! Map) {
+  return const SizedBox();
+}
+
+final data = Map<String, dynamic>.from(raw);
+
+final results = data['results'] is Map
+    ? Map<String, dynamic>.from(data['results'])
+    : {};
+
+
+        final king = (data['kingName'] ?? "").toString();
+        final shots = data['shots'] ?? 0;
+
+        final sorted = results.entries.toList()
+          ..sort((a, b) =>
+              ((a.value is Map ? a.value['order'] : 0) ?? 0).compareTo((b.value is Map ? b.value['order'] : 0) ?? 0));
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+            //--------------------------------------------------
+            // ✅ TREFFER
+            //--------------------------------------------------
+            ...sorted.map((e) {
+              final r = e.value is Map ? e.value : {};
+              final partShots = r['shots'] ?? "-";
+
+
+
+              String time = "--:--";
+
+if (r['time'] != null && r['time'].toString().isNotEmpty) {
+  final parsed = DateTime.tryParse(r['time'].toString());
+
+  if (parsed != null) {
+    time = _formatTime(parsed);
+  }
+}
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle,
+                        size: 16, color: Colors.green),
+                    const SizedBox(width: 6),
+                    
+Expanded(
+  child: Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Text(
+      "${e.key.toString()} (${partShots} Schuss)",
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    ),
+    Text(
+      (r['name'] ?? '-').toString(),
+      style: const TextStyle(fontSize: 13),
+    ),
+  ],
+),
+
+),
+
+
+
+                    
+                    Text(
+                      time,
+                      style: const TextStyle(
+                          fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              );
+            }),
+
+            //--------------------------------------------------
+            // ✅ KÖNIG
+            //--------------------------------------------------
+            if (king != "")
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(
+                  children: [
+                    const Icon(Icons.emoji_events,
+                        size: 16, color: Colors.amber),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        "👑 $king ($shots Schuss)",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber.shade800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    )
+  ];
+}
+
 }

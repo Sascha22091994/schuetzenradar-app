@@ -64,17 +64,25 @@ class _AdlerScreenState extends State<AdlerScreen> {
         .get();
 
     if (query.docs.isNotEmpty) {
-      return query.docs.first.reference;
-    }
+  final ref = query.docs.first.reference;
 
-    return await db.collection('news').add({
-      "title": "🦅 Adlerschießen LIVE",
-      "location": widget.locationName,
-      "type": "liveEvent",
-      "updates": [],
-      "isActive": true,
-      "date": DateTime.now().toIso8601String(),
-    });
+  // ✅ sicherstellen, dass eventType gesetzt ist
+  await ref.update({
+    "eventType": selectedEvent,
+  });
+
+  return ref;
+}
+
+return await db.collection('news').add({
+  "title": "🦅 Adlerschießen LIVE",
+  "location": widget.locationName,
+  "type": "liveEvent",
+  "eventType": selectedEvent, // ✅ NEU!!
+  "updates": [],
+  "isActive": true,
+  "date": DateTime.now().toIso8601String(),
+});
   }
 
   //--------------------------------------------------
@@ -199,30 +207,16 @@ class _AdlerScreenState extends State<AdlerScreen> {
             //--------------------------------------------------
             Row(
               children: [
-                _eventButton("Jung", "jung"),
-                _eventButton("Alt", "alt"),
+                _eventButton("Jungkönig", "jung"),
+                _eventButton("Altkönig", "alt"),
               ],
             ),
 
             const SizedBox(height: 10),
+const SizedBox(height: 10),
 
-            //--------------------------------------------------
-            // SCHUSS COUNTER
-            //--------------------------------------------------
-            Card(
-              color: Colors.green.shade100,
-              child: ListTile(
-                title: Text("Schüsse: $shots",
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                trailing: IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () async {
-                    setState(() => current['shots']++);
-                    await _saveData();
-                  },
-                ),
-              ),
-            ),
+
+
 
             //--------------------------------------------------
             // KÖNIG
@@ -264,6 +258,44 @@ class _AdlerScreenState extends State<AdlerScreen> {
             ),
 
             const SizedBox(height: 10),
+
+            //--------------------------------------------------
+// 🔥 GROSSER SCHUSS BUTTON
+//--------------------------------------------------
+SizedBox(
+  width: double.infinity,
+  height: 60,
+  child: ElevatedButton.icon(
+    icon: const Icon(Icons.add_circle, size: 28),
+    label: const Text(
+      "Schuss hinzufügen",
+      style: TextStyle(fontSize: 18),
+    ),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.orange,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+    onPressed: () async {
+      setState(() => current['shots']++);
+      await _saveData();
+    },
+  ),
+),
+            //--------------------------------------------------
+            // SCHUSS COUNTER
+            //--------------------------------------------------
+  Card(
+  color: Colors.green.shade100,
+  child: ListTile(
+    title: Text(
+      "Schüsse: $shots",
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    ),
+  ),
+),
+
 
             if (players.isNotEmpty)
               Wrap(
@@ -336,9 +368,12 @@ class _AdlerScreenState extends State<AdlerScreen> {
                                       await _addLiveUpdate("✅ $part – $value");
 
                                       if (isKingPart) {
-                                        await _addLiveUpdate(
-                                          "👑 König: $value (${current['shots']} Schuss)",
-                                        );
+                                       await _addLiveUpdate(
+  selectedEvent == "alt"
+      ? "👑 Altkönig: $value (${current['shots']} Schuss)"
+      : "👑 Jungkönig: $value (${current['shots']} Schuss)",
+);
+
                                       }
                                     },
                             ),
