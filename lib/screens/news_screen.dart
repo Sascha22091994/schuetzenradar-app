@@ -553,13 +553,14 @@ subtitle: Text(
     );
   }
 
-  //--------------------------------------------------
-// ✅ LIVE TREFFER DIREKT AUS FIREBASE
+//--------------------------------------------------
+// ✅ LIVE TREFFER DIREKT AUS FIREBASE (VERBESSERT)
 //--------------------------------------------------
 List<Widget> _buildLiveHits(String locationId, String eventType) {
   if (locationId.trim().isEmpty) {
-  return [];
-}
+    return [];
+  }
+
   return [
     StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
@@ -576,79 +577,112 @@ List<Widget> _buildLiveHits(String locationId, String eventType) {
 
         final raw = snapshot.data!.data();
 
-if (raw == null || raw is! Map) {
-  return const SizedBox();
-}
+        if (raw == null || raw is! Map) {
+          return const SizedBox();
+        }
 
-final data = Map<String, dynamic>.from(raw);
+        final data = Map<String, dynamic>.from(raw);
 
-final results = data['results'] is Map
-    ? Map<String, dynamic>.from(data['results'])
-    : {};
-
+        final results = data['results'] is Map
+            ? Map<String, dynamic>.from(data['results'])
+            : {};
 
         final king = (data['kingName'] ?? "").toString();
         final shots = data['shots'] ?? 0;
 
         final sorted = results.entries.toList()
           ..sort((a, b) =>
-              ((a.value is Map ? a.value['order'] : 0) ?? 0).compareTo((b.value is Map ? b.value['order'] : 0) ?? 0));
+              ((a.value is Map ? a.value['order'] : 0) ?? 0)
+                  .compareTo((b.value is Map ? b.value['order'] : 0) ?? 0));
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
             //--------------------------------------------------
-            // ✅ TREFFER
+            // ✅ TREFFER (JETZT SCHÖN LESBAR)
             //--------------------------------------------------
             ...sorted.map((e) {
+
               final r = e.value is Map ? e.value : {};
               final partShots = r['shots'] ?? "-";
 
-
-
               String time = "--:--";
+              if (r['time'] != null && r['time'].toString().isNotEmpty) {
+                final parsed = DateTime.tryParse(r['time'].toString());
+                if (parsed != null) {
+                  time = _formatTime(parsed);
+                }
+              }
 
-if (r['time'] != null && r['time'].toString().isNotEmpty) {
-  final parsed = DateTime.tryParse(r['time'].toString());
-
-  if (parsed != null) {
-    time = _formatTime(parsed);
-  }
-}
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    )
+                  ],
+                ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+
                     const Icon(Icons.check_circle,
-                        size: 16, color: Colors.green),
-                    const SizedBox(width: 6),
-                    
-Expanded(
-  child: Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    Text(
-      "${e.key.toString()} (${partShots} Schuss)",
-      style: const TextStyle(fontWeight: FontWeight.bold),
-    ),
-    Text(
-      (r['name'] ?? '-').toString(),
-      style: const TextStyle(fontSize: 13),
-    ),
-  ],
-),
+                        color: Colors.green, size: 18),
 
-),
+                    const SizedBox(width: 8),
 
+                    //--------------------------------------------------
+                    // TEXT BLOCK (JETZT MEHR ZEILEN)
+                    //--------------------------------------------------
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
 
+                          Text(
+                            e.key.toString(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
 
-                    
+                          const SizedBox(height: 2),
+
+                          Text(
+                            (r['name'] ?? "-").toString(),
+                            style: const TextStyle(fontSize: 13),
+                          ),
+
+                          const SizedBox(height: 2),
+
+                          Text(
+                            "$partShots Schuss",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    //--------------------------------------------------
+                    // UHRZEIT RECHTS
+                    //--------------------------------------------------
                     Text(
                       time,
                       style: const TextStyle(
-                          fontSize: 11, color: Colors.grey),
+                        fontSize: 11,
+                        color: Colors.grey,
+                      ),
                     ),
                   ],
                 ),
@@ -656,22 +690,27 @@ Expanded(
             }),
 
             //--------------------------------------------------
-            // ✅ KÖNIG
+            // ✅ KÖNIG (MEHR HERVORGEHOBEN)
             //--------------------------------------------------
             if (king != "")
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 child: Row(
                   children: [
                     const Icon(Icons.emoji_events,
-                        size: 16, color: Colors.amber),
-                    const SizedBox(width: 6),
+                        color: Colors.amber),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         "👑 $king ($shots Schuss)",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.amber.shade800,
+                          color: Colors.amber.shade900,
                         ),
                       ),
                     ),
@@ -684,5 +723,6 @@ Expanded(
     )
   ];
 }
+
 
 }
