@@ -234,20 +234,9 @@ if (_showInfo)
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
 
-        //--------------------------------------------------
-        // ICON
-        //--------------------------------------------------
-        const Icon(
-          Icons.sensors,
-          size: 22,
-          color: Colors.green,
-        ),
-
+        const Icon(Icons.sensors, size: 22, color: Colors.green),
         const SizedBox(width: 10),
 
-        //--------------------------------------------------
-        // CONTENT
-        //--------------------------------------------------
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,9 +244,7 @@ if (_showInfo)
 
               const Text(
                 "Willkommen & danke, dass du SchützenRadar nutzt! 🙌",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 6),
@@ -272,9 +259,6 @@ if (_showInfo)
 
               const SizedBox(height: 10),
 
-              //--------------------------------------------------
-              // ✅ CLICKABLE LINK
-              //--------------------------------------------------
               GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -285,9 +269,8 @@ if (_showInfo)
                   );
                 },
                 child: const Text(
-                  
                   "💬 Fehlt eine Veranstaltung oder ist dir etwas aufgefallen?\n"
-                "→ Schau gern auf die Kontaktseite – ich freue mich auf deine Nachricht 😊",
+                  "→ Schau gern auf die Kontaktseite – ich freue mich auf deine Nachricht 😊",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.green,
@@ -299,23 +282,33 @@ if (_showInfo)
           ),
         ),
 
-        //--------------------------------------------------
-        // CLOSE BUTTON (FIXED POSITION)
-        //--------------------------------------------------
         GestureDetector(
           onTap: _hideInfo,
           child: const Padding(
             padding: EdgeInsets.only(left: 6, top: 2),
-            child: Icon(
-              Icons.close,
-              size: 18,
-              color: Colors.grey,
-            ),
+            child: Icon(Icons.close, size: 18, color: Colors.grey),
           ),
         ),
       ],
     ),
   ),
+  const SizedBox(height: 12),
+
+//--------------------------------------------------
+// ✅ FILTER (IMMER SICHTBAR!)
+//--------------------------------------------------
+Wrap(
+  alignment: WrapAlignment.center,
+  spacing: 8,
+  children: [
+    _filterButton("Alle", "all"),
+    _filterButton("🔥 Wichtig", "highlights"),
+    _filterButton("⚡ Live", "live"),
+  ],
+),
+
+const SizedBox(height: 12),
+
 //--------------------------------------------------
 // 🔴 LIVE PRESENTER (IMMER SICHTBAR)
 //--------------------------------------------------
