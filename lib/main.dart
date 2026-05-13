@@ -8,21 +8,31 @@ import 'screens/splash_screen.dart';
 import 'services/favorite_service.dart';
 
 //--------------------------------------------------
-// ✅ GLOBALER THEME SWITCH
+// ✅ GLOBAL THEME CONTROLLER (FIXED)
 //--------------------------------------------------
 final ValueNotifier<ThemeMode> themeNotifier =
-    ValueNotifier(ThemeMode.system);
+    ValueNotifier(ThemeMode.light); // ✅ KEIN system mehr!
+
+//--------------------------------------------------
+// ✅ ROBUSTER TOGGLE (1 CLICK FIX)
+//--------------------------------------------------
+void toggleTheme() {
+  final current = themeNotifier.value;
+
+  if (current == ThemeMode.dark) {
+    themeNotifier.value = ThemeMode.light;
+  } else {
+    themeNotifier.value = ThemeMode.dark;
+  }
+}
 
 void main() {
   runZonedGuarded<Future<void>>(
     () async {
-      //--------------------------------------------------
-      // ✅ ALLES IN DERSSELBEN ZONE (FIX!)
-      //--------------------------------------------------
       WidgetsFlutterBinding.ensureInitialized();
 
       //--------------------------------------------------
-      // FIREBASE
+      // ✅ FIREBASE INIT
       //--------------------------------------------------
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
@@ -35,7 +45,7 @@ void main() {
           FirebaseCrashlytics.instance.recordFlutterFatalError;
 
       //--------------------------------------------------
-      // SERVICES
+      // ✅ SERVICES
       //--------------------------------------------------
       await FavoriteService.loadFavorites();
 
@@ -58,147 +68,143 @@ class MyApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (context, mode, _) {
 
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'SchützenRadar',
+        final theme = mode == ThemeMode.dark
+            ? _buildDarkTheme()
+            : _buildLightTheme();
 
-          //--------------------------------------------------
-          // ✅ THEME MODE
-          //--------------------------------------------------
-          themeMode: mode,
+        return AnimatedTheme(
+          data: theme,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
 
-          //--------------------------------------------------
-          // ✅ UX (kein Glow)
-          //--------------------------------------------------
-          scrollBehavior: const MaterialScrollBehavior().copyWith(
-            overscroll: false,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'SchützenRadar',
+
+            themeMode: mode,
+            theme: _buildLightTheme(),
+            darkTheme: _buildDarkTheme(),
+
+            scrollBehavior: const MaterialScrollBehavior().copyWith(
+              overscroll: false,
+            ),
+
+            home: const SplashScreen(),
           ),
-
-          //--------------------------------------------------
-          // ✅ LIGHT THEME
-          //--------------------------------------------------
-          theme: ThemeData(
-            useMaterial3: true,
-
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF2E7D32),
-              brightness: Brightness.light,
-            ),
-
-            scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFF2E7D32),
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-
-            cardTheme: CardThemeData(
-              elevation: 3,
-              shadowColor: Colors.black26,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-
-            elevatedButtonTheme: ElevatedButtonThemeData(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-
-            inputDecorationTheme: InputDecorationTheme(
-              filled: true,
-              fillColor: Colors.white,
-              prefixIconColor: Colors.grey,
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
-
-            textTheme: ThemeData.light().textTheme.apply(
-              bodyColor: Colors.black87,
-              displayColor: Colors.black87,
-            ),
-          ),
-
-          //--------------------------------------------------
-          // ✅ DARK THEME
-          //--------------------------------------------------
-          darkTheme: ThemeData(
-            useMaterial3: true,
-
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF2E7D32),
-              brightness: Brightness.dark,
-            ),
-
-            scaffoldBackgroundColor: const Color(0xFF121212),
-
-            appBarTheme: const AppBarTheme(
-              backgroundColor: Color(0xFF1B5E20),
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-
-            cardTheme: CardThemeData(
-              elevation: 3,
-              color: const Color(0xFF222222),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-
-            listTileTheme: const ListTileThemeData(
-              textColor: Colors.white,
-              iconColor: Colors.white70,
-            ),
-
-            elevatedButtonTheme: ElevatedButtonThemeData(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-
-            inputDecorationTheme: InputDecorationTheme(
-              filled: true,
-              fillColor: const Color(0xFF1E1E1E),
-
-              hintStyle: const TextStyle(color: Colors.white54),
-              labelStyle: const TextStyle(color: Colors.white70),
-
-              prefixIconColor: Colors.white70,
-
-              contentPadding: const EdgeInsets.symmetric(vertical: 12),
-
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
-
-            textTheme: ThemeData.dark().textTheme.apply(
-              bodyColor: Colors.white,
-              displayColor: Colors.white,
-            ),
-          ),
-
-          //--------------------------------------------------
-          home: const SplashScreen(),
         );
       },
     );
   }
+}
+
+//--------------------------------------------------
+// ✅ LIGHT THEME
+//--------------------------------------------------
+ThemeData _buildLightTheme() {
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: const Color(0xFF2E7D32),
+      brightness: Brightness.light,
+    ),
+    scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF2E7D32),
+      foregroundColor: Colors.white,
+      elevation: 0,
+    ),
+
+    cardTheme: CardThemeData(
+      elevation: 3,
+      shadowColor: Colors.black26,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+    ),
+
+    listTileTheme: const ListTileThemeData(
+      textColor: Colors.black87,
+      iconColor: Colors.grey,
+    ),
+
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF2E7D32),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    ),
+
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: Colors.white,
+      prefixIconColor: Colors.grey,
+      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+    ),
+  );
+}
+
+//--------------------------------------------------
+// ✅ DARK THEME
+//--------------------------------------------------
+ThemeData _buildDarkTheme() {
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: const Color(0xFF2E7D32),
+      brightness: Brightness.dark,
+    ),
+    scaffoldBackgroundColor: const Color(0xFF121212),
+
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF1B5E20),
+      foregroundColor: Colors.white,
+      elevation: 0,
+    ),
+
+    cardTheme: CardThemeData(
+      elevation: 3,
+      color: const Color(0xFF222222),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+    ),
+
+    listTileTheme: const ListTileThemeData(
+      textColor: Colors.white,
+      iconColor: Colors.white70,
+    ),
+
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF2E7D32),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    ),
+
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: const Color(0xFF1E1E1E),
+      hintStyle: const TextStyle(color: Colors.white54),
+      labelStyle: const TextStyle(color: Colors.white70),
+      prefixIconColor: Colors.white70,
+      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+    ),
+  );
 }

@@ -28,6 +28,7 @@ class _MainNavigationScreenState
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       body: _pages[_currentIndex],
 
@@ -37,46 +38,61 @@ class _MainNavigationScreenState
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
 
-onTap: (index) {
+        //--------------------------------------------------
+        // ✅ FIXED TOGGLE (1 CLICK)
+        //--------------------------------------------------
+        onTap: (index) {
 
-  if (index == 4) {
-    // ✅ DARK MODE SWITCH
-    if (themeNotifier.value == ThemeMode.light) {
-      themeNotifier.value = ThemeMode.dark;
-    } else if (themeNotifier.value == ThemeMode.dark) {
-      themeNotifier.value = ThemeMode.system;
-    } else {
-      themeNotifier.value = ThemeMode.light;
-    }
-    return;
-  }
+          if (index == 4) {
+            toggleTheme(); // ✅ sauberer Wechsel
+            return;
+          }
 
-  setState(() => _currentIndex = index);
-},
+          setState(() => _currentIndex = index);
+        },
 
-   items: const [
-  BottomNavigationBarItem(
-    icon: Icon(Icons.newspaper),
-    label: 'News',
-  ),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.event),
-    label: 'Termine',
-  ),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.sports_martial_arts),
-    label: 'Kontakt',
-  ),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.more_horiz),
-    label: 'Sonstiges',
-  ),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.dark_mode),
-    label: 'Modus',
-  ),
-],
+        //--------------------------------------------------
+        // ✅ ITEMS (MIT DYNAMIC ICON)
+        //--------------------------------------------------
+        items: [
 
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.newspaper),
+            label: 'News',
+          ),
+
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.event),
+            label: 'Termine',
+          ),
+
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.sports_martial_arts),
+            label: 'Kontakt',
+          ),
+
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.more_horiz),
+            label: 'Sonstiges',
+          ),
+
+          //--------------------------------------------------
+          // ✅ DYNAMIC THEME ICON
+          //--------------------------------------------------
+          BottomNavigationBarItem(
+            icon: ValueListenableBuilder<ThemeMode>(
+              valueListenable: themeNotifier,
+              builder: (context, mode, _) {
+                return Icon(
+                  mode == ThemeMode.dark
+                      ? Icons.light_mode
+                      : Icons.dark_mode,
+                );
+              },
+            ),
+            label: 'Modus',
+          ),
+        ],
       ),
     );
   }
