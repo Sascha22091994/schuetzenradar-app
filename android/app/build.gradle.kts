@@ -28,35 +28,37 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // ✅ Stabilität
         multiDexEnabled = true
     }
 
     //--------------------------------------------------
-    // ✅ SIGNING (DAS IST DER FIX 🔥)
+    // ✅ SIGNING (FIXED)
     //--------------------------------------------------
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = file("keystore.jks")
-            storePassword = keystoreProperties["storePassword"] as String
+
+            if (keystorePropertiesFile.exists()) {
+
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+
+                // ✅ RICHTIG: aus properties laden
+                val storeFileValue = keystoreProperties["storeFile"] as String
+                storeFile = file(storeFileValue)
+
+                storePassword = keystoreProperties["storePassword"] as String
+
+            }
         }
     }
 
     //--------------------------------------------------
-    // ✅ AAB SPLIT FIX
+    // ✅ BUNDLE SPLIT FIX
     //--------------------------------------------------
     bundle {
-        language {
-            enableSplit = false
-        }
-        density {
-            enableSplit = false
-        }
-        abi {
-            enableSplit = false
-        }
+        language { enableSplit = false }
+        density { enableSplit = false }
+        abi { enableSplit = false }
     }
 
     //--------------------------------------------------
@@ -76,7 +78,11 @@ android {
     //--------------------------------------------------
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")  // 🔥 wichtig!
+
+            // ✅ nur setzen, wenn Properties existieren
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
 
             isMinifyEnabled = false
             isShrinkResources = false
@@ -87,7 +93,6 @@ android {
 dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
     implementation("com.google.firebase:firebase-analytics")
-
     implementation("androidx.multidex:multidex:2.0.1")
 }
 
