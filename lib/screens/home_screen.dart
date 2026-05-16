@@ -337,8 +337,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               _showEditFestivalDialog(f);
                             }
                           },
-                          child: FestivalCard(festival: f),
-                        ),
+child: FestivalCard(
+  festival: f,
+  onFavoriteChanged: () {
+    setState(() {}); // ✅ DAS ist der Fix!
+  },
+),                        ),
                       );
                     }),
 

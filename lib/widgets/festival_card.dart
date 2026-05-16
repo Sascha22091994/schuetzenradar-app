@@ -6,7 +6,14 @@ import '../screens/festival_detail_screen.dart';
 class FestivalCard extends StatelessWidget {
   final Festival festival;
 
-  const FestivalCard({super.key, required this.festival});
+  // ✅ NEU
+  final VoidCallback onFavoriteChanged;
+
+  const FestivalCard({
+    super.key,
+    required this.festival,
+    required this.onFavoriteChanged, // ✅ NEU
+  });
 
   //--------------------------------------------------
   DateTime get now => DateTime.now();
@@ -85,29 +92,17 @@ class FestivalCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-
-            //--------------------------------------------------
-            // ✅ FARBE
-            //--------------------------------------------------
             color: isLive
                 ? (isDark ? Colors.green.shade800 : Colors.green.shade50)
                 : (isDark ? Colors.grey.shade900 : Colors.white),
-
             borderRadius: BorderRadius.circular(16),
-
-            //--------------------------------------------------
-            // ✅ BORDER
-            //--------------------------------------------------
             border: Border.all(
-              color: isLive
-                  ? Colors.green
-                  : Colors.grey.shade300,
+              color: isLive ? Colors.green : Colors.grey.shade300,
               width: isLive ? 2 : 1,
             ),
-
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha:0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 6,
                 offset: const Offset(0, 3),
               )
@@ -118,15 +113,9 @@ class FestivalCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
 
-              //--------------------------------------------------
-              // TOP ROW (ohne Badge!)
-              //--------------------------------------------------
               Row(
                 children: [
 
-                  //--------------------------------------------------
-                  // DATUM (ruhig)
-                  //--------------------------------------------------
                   Text(
                     _formatDate(),
                     style: TextStyle(
@@ -137,9 +126,6 @@ class FestivalCard extends StatelessWidget {
 
                   const SizedBox(width: 10),
 
-                  //--------------------------------------------------
-                  // STATUS BADGES (nur WENN nötig)
-                  //--------------------------------------------------
                   if (isLive)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -178,11 +164,12 @@ class FestivalCard extends StatelessWidget {
                   const Spacer(),
 
                   //--------------------------------------------------
-                  // FAVORITE
+                  // ✅ FIXED FAVORITE BUTTON
                   //--------------------------------------------------
                   GestureDetector(
-                    onTap: () {
-                      FavoriteService.toggleFavorite(festival.id);
+                    onTap: () async {
+                      await FavoriteService.toggleFavorite(festival.id);
+                      onFavoriteChanged(); // ✅ DAS WAR DER FEHLER
                     },
                     child: Icon(
                       isFav ? Icons.star : Icons.star_border,
@@ -194,9 +181,6 @@ class FestivalCard extends StatelessWidget {
 
               const SizedBox(height: 10),
 
-              //--------------------------------------------------
-              // NAME
-              //--------------------------------------------------
               Text(
                 festival.name,
                 style: TextStyle(
@@ -208,9 +192,6 @@ class FestivalCard extends StatelessWidget {
 
               const SizedBox(height: 4),
 
-              //--------------------------------------------------
-              // STATUS TEXT (jetzt sauber)
-              //--------------------------------------------------
               if (isLive)
                 const Text(
                   "🔥 Läuft gerade",
@@ -230,9 +211,6 @@ class FestivalCard extends StatelessWidget {
 
               const SizedBox(height: 4),
 
-              //--------------------------------------------------
-              // ADDRESS
-              //--------------------------------------------------
               Row(
                 children: [
                   const Icon(Icons.location_on, size: 16, color: Colors.grey),

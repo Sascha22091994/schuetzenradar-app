@@ -16,15 +16,25 @@ class FestivalDetailScreen extends StatelessWidget {
   });
 
   //--------------------------------------------------
-  void _shareEvent() {
-    final text =
-        "🎉 ${festival.name}\n\n"
-        "📍 ${festival.address}\n"
-        "📅 ${_formatDate()}\n\n"
-        "👉 Komm vorbei zum Schützenfest!";
+void _shareEvent(BuildContext context) {
+  final text =
+      "🎉 ${festival.name}\n\n"
+      "📍 ${festival.address}\n"
+      "📅 ${_formatDate()}\n\n"
+      "👉 Komm vorbei zum Schützenfest!";
 
+  final box = context.findRenderObject();
+
+  if (box is RenderBox && box.hasSize) {
+    Share.share(
+      text,
+      sharePositionOrigin:
+          box.localToGlobal(Offset.zero) & box.size,
+    );
+  } else {
     Share.share(text);
   }
+}
 
   //--------------------------------------------------
   Future<void> _openMaps() async {
@@ -55,7 +65,7 @@ class FestivalDetailScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: _shareEvent,
+            onPressed: () => _shareEvent(context),
           ),
         ],
       ),

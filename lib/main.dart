@@ -2,30 +2,29 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-
+import 'dart:ui';
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'services/favorite_service.dart';
 
 //--------------------------------------------------
-// ✅ GLOBAL THEME CONTROLLER (FIXED)
+// ✅ GLOBAL THEME CONTROLLER
 //--------------------------------------------------
 final ValueNotifier<ThemeMode> themeNotifier =
-    ValueNotifier(ThemeMode.light); // ✅ KEIN system mehr!
+    ValueNotifier(ThemeMode.light);
 
 //--------------------------------------------------
-// ✅ ROBUSTER TOGGLE (1 CLICK FIX)
+// ✅ ROBUSTER TOGGLE
 //--------------------------------------------------
 void toggleTheme() {
   final current = themeNotifier.value;
-
-  if (current == ThemeMode.dark) {
-    themeNotifier.value = ThemeMode.light;
-  } else {
-    themeNotifier.value = ThemeMode.dark;
-  }
+  themeNotifier.value =
+      current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
 }
 
+//--------------------------------------------------
+// ✅ MAIN
+//--------------------------------------------------
 void main() {
   runZonedGuarded<Future<void>>(
     () async {
@@ -39,13 +38,18 @@ void main() {
       );
 
       //--------------------------------------------------
-      // ✅ CRASHLYTICS
+      // ✅ CRASHLYTICS SETUP (ERWEITERT)
       //--------------------------------------------------
       FlutterError.onError =
           FirebaseCrashlytics.instance.recordFlutterFatalError;
 
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+
       //--------------------------------------------------
-      // ✅ SERVICES
+      // ✅ SERVICES (HIER WAR DEIN BUG ✅)
       //--------------------------------------------------
       await FavoriteService.loadFavorites();
 
@@ -59,6 +63,8 @@ void main() {
 }
 
 //--------------------------------------------------
+// ✅ APP
+//--------------------------------------------------
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -68,29 +74,19 @@ class MyApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (context, mode, _) {
 
-        final theme = mode == ThemeMode.dark
-            ? _buildDarkTheme()
-            : _buildLightTheme();
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'SchützenRadar',
 
-        return AnimatedTheme(
-          data: theme,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
+          themeMode: mode,
+          theme: _buildLightTheme(),
+          darkTheme: _buildDarkTheme(),
 
-          child: MaterialApp(
-            debugShowCheckedModeBanner: false,
-            title: 'SchützenRadar',
-
-            themeMode: mode,
-            theme: _buildLightTheme(),
-            darkTheme: _buildDarkTheme(),
-
-            scrollBehavior: const MaterialScrollBehavior().copyWith(
-              overscroll: false,
-            ),
-
-            home: const SplashScreen(),
+          scrollBehavior: const MaterialScrollBehavior().copyWith(
+            overscroll: false,
           ),
+
+          home: const SplashScreen(),
         );
       },
     );
