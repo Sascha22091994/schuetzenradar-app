@@ -32,8 +32,61 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
 SortMode _sortMode = SortMode.date;
+String _getActiveFiltersText() {
+  List<String> active = [];
 
+  if (_filter != MonthFilter.all) {
+    final label = _getFilterLabel();
+    if (label.isNotEmpty) {
+      active.add(label);
+    }
+  }
 
+  if (_showAdvanced && _userPosition != null) {
+    active.add("Umkreis ${_radiusKm.round()} km");
+  }
+
+  if (_sortMode == SortMode.distance && _userPosition != null) {
+    active.add("Sortiert nach Nähe");
+  }
+
+  if (_searchQuery.isNotEmpty) {
+    active.add("Suche: \"$_searchQuery\"");
+  }
+
+  return active.join(" • ");
+}
+
+String _getFilterLabel() {
+  switch (_filter) {
+    case MonthFilter.today:
+      return "Heute";
+
+    case MonthFilter.may:
+      return "Mai";
+
+    case MonthFilter.june:
+      return "Juni";
+
+    case MonthFilter.july:
+      return "Juli";
+
+    case MonthFilter.august:
+      return "August";
+
+    case MonthFilter.past:
+      return "Vergangen";
+
+    case MonthFilter.favorites:
+      return "Favoriten";
+
+    case MonthFilter.weekend:
+      return "Wochenende"; // ✅ neu hinzugefügt
+
+    case MonthFilter.all:
+      return ""; // bewusst leer (kein Filter aktiv)
+  }
+}
   // ✅ GEO STATE NEU
   Position? _userPosition;
   double _radiusKm = 25;
@@ -62,13 +115,18 @@ SortMode _sortMode = SortMode.date;
     }
 
 
-    final pos = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.medium,
-    );
 
-    setState(() {
-      _userPosition = pos;
-    });
+try {
+  final pos = await Geolocator.getCurrentPosition(
+    desiredAccuracy: LocationAccuracy.medium,
+  );
+
+  setState(() {
+    _userPosition = pos;
+  });
+} catch (e) {
+  debugPrint("Location error: $e");
+}
   }
 
   //--------------------------------------------------
@@ -123,65 +181,104 @@ double? _distanceInKm(Festival f) {
   //}
 
   //--------------------------------------------------
-  List<Festival> _applyFilter(List<Festival> festivals) {
+List<Festival> _applyFilter(List<Festival> festivals) {
+  List<Festival> list = List.from(festivals);
 
-    List<Festival> list;
+  //--------------------------------------------------
+  // ✅ 1. FILTER (MONATE / FAVORITEN)
+  //--------------------------------------------------
+switch (_filter) {
+  case MonthFilter.all:
+    break;
 
-    if (_filter == MonthFilter.favorites) {
-      list = festivals.where((f) => FavoriteService.isFavorite(f.id)).toList();
-    } else {
-      list = festivals.where((f) {
-        switch (_filter) {
-          case MonthFilter.past:
-            return _isPast(f);
-          case MonthFilter.today:
-            return _isToday(f);
-          case MonthFilter.may:
-            return f.startDate.month == 5;
-          case MonthFilter.june:
-            return f.startDate.month == 6;
-          case MonthFilter.july:
-            return f.startDate.month == 7;
-          case MonthFilter.august:
-            return f.startDate.month == 8;
-          default:
-            return true;
-        }
-      }).toList();
-    }
+  case MonthFilter.favorites:
+    list = list.where(
+      (f) => FavoriteService.isFavorite(f.id),
+    ).toList();
+    break;
 
-    if (_searchQuery.isNotEmpty) {
-      list = list.where((f) =>
-          f.name.toLowerCase().contains(_searchQuery) ||
-          f.address.toLowerCase().contains(_searchQuery)
-      ).toList();
-    }
+  case MonthFilter.past:
+    list = list.where(_isPast).toList();
+    break;
 
-    if (_filter != MonthFilter.past) {
-      list = list.where((f) => !_isPast(f)).toList();
-    }
+  case MonthFilter.today:
+    list = list.where(_isToday).toList();
+    break;
 
-  // ✅ GEO FILTER zuerst
-if (_userPosition != null) {
-  list = list.where(_isWithinRadius).toList();
+  case MonthFilter.may:
+    list = list.where((f) => f.startDate.month == 5).toList();
+    break;
+
+  case MonthFilter.june:
+    list = list.where((f) => f.startDate.month == 6).toList();
+    break;
+
+  case MonthFilter.july:
+    list = list.where((f) => f.startDate.month == 7).toList();
+    break;
+
+  case MonthFilter.august:
+    list = list.where((f) => f.startDate.month == 8).toList();
+    break;
+
+  case MonthFilter.weekend:
+    list = list; 
+    break;
 }
 
-if (_sortMode == SortMode.distance && _userPosition != null) {
-  list.sort((a, b) {
-    final distA = _distanceInKm(a) ?? 999999;
-    final distB = _distanceInKm(b) ?? 999999;
-    return distA.compareTo(distB);
-  });
-} else {
-  list.sort((a, b) {
-    if (_isToday(a)) return -1;
-    if (_isToday(b)) return 1;
-    return a.startDate.compareTo(b.startDate);
-  });
-}
+  //--------------------------------------------------
+  // ✅ 2. SUCHE
+  //--------------------------------------------------
+  if (_searchQuery.isNotEmpty) {
+    list = list.where((f) =>
 
-    return list;
+
+f.name.toLowerCase().contains(_searchQuery) ||
+f.address.toLowerCase().contains(_searchQuery)
+
+
+    ).toList();
   }
+
+  //--------------------------------------------------
+  // ✅ 3. RADIUS NUR WENN ERWEITERT AKTIV
+  //--------------------------------------------------
+  if (_showAdvanced && _userPosition != null) {
+    list = list.where(_isWithinRadius).toList();
+  }
+
+  //--------------------------------------------------
+  // ✅ 4. SORTIERUNG
+  //--------------------------------------------------
+  if (_sortMode == SortMode.distance && _userPosition != null) {
+    list.sort((a, b) {
+      final distA = _distanceInKm(a) ?? 999999;
+      final distB = _distanceInKm(b) ?? 999999;
+      return distA.compareTo(distB);
+    });
+  } else {
+    final today = DateTime(now.year, now.month, now.day);
+
+    list.sort((a, b) {
+      final aStart = DateTime(
+          a.startDate.year, a.startDate.month, a.startDate.day);
+      final bStart = DateTime(
+          b.startDate.year, b.startDate.month, b.startDate.day);
+
+      // ✅ nächstes Event oben
+      final aDiff = aStart.difference(today).inDays;
+      final bDiff = bStart.difference(today).inDays;
+
+      // negative Werte (Vergangenheit) nach unten schieben
+      final aScore = aDiff < 0 ? 99999 : aDiff;
+      final bScore = bDiff < 0 ? 99999 : bDiff;
+
+      return aScore.compareTo(bScore);
+    });
+  }
+
+  return list;
+}
 
   //--------------------------------------------------
   @override
@@ -272,6 +369,30 @@ if (_sortMode == SortMode.distance && _userPosition != null) {
                   ],
                 ),
               ),
+if (_getActiveFiltersText().isNotEmpty)
+  Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.green.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.filter_list, size: 16),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              _getActiveFiltersText(),
+              style: const TextStyle(fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    ),
+  ),
 
 //--------------------------------------------------
               // SEARCH
@@ -544,7 +665,20 @@ Padding(
     final active = _filter == value;
 
     return GestureDetector(
-      onTap: () => setState(() => _filter = value),
+      onTap: () {
+  setState(() {
+    _filter = value;
+
+    //------------------------------------------
+    // ✅ RESET LOGIK (NEU!)
+    //------------------------------------------
+    _sortMode = SortMode.date;
+
+    if (!_showAdvanced) {
+      _radiusKm = 25; // optional
+    }
+  });
+},
       child: Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
