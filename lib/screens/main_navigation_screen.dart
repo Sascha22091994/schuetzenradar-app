@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'home_screen.dart';
 import 'news_screen.dart';
@@ -14,69 +15,244 @@ class MainNavigationScreen extends StatefulWidget {
       _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState
-    extends State<MainNavigationScreen> {
+class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   int _currentIndex = 1;
 
-  final List<Widget> _pages = const [
-    NewsScreen(),
-    HomeScreen(),
-    ContactScreen(),
-    MiscScreen(),
-  ];
+  //--------------------------------------------------
+  // ✅ WEBSITE öffnen
+  //--------------------------------------------------
+  Future<void> _openWebsite() async {
+    final url = Uri.parse(
+        "https://sascha22091994.github.io/schuetzenradar-legal/");
 
+    if (await canLaunchUrl(url)) {
+      await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
+    }
+  }
+
+  //--------------------------------------------------
+  // ✅ SUPPORT DIALOG
+  //--------------------------------------------------
+void _openSupportDialog() {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text("💛 Unterstützen"),
+      content: const Text(
+        "SchützenRadar ist ein privates Projekt ❤️\n\n"
+        "Ich stecke viel Zeit in die Entwicklung, "
+        "damit du kein Fest mehr verpasst.\n\n"
+        "Wenn dir die App gefällt, gib mir doch einfach "
+        "ein Bier aus 🍺\n\n"
+        "Vielen Dank für deinen Support 🙌",
+      ),
+      actions: [
+        TextButton(
+          child: const Text("Abbrechen"),
+          onPressed: () => Navigator.pop(context),
+        ),
+        TextButton(
+          child: const Text("Website öffnen"),
+          onPressed: () async {
+            Navigator.pop(context);
+
+            // ✅ WEBSITE öffnen
+            await _openWebsite();
+
+            // ✅ 🍺 SNACKBAR (danach anzeigen)
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("🍺 Danke dir! Prost!"),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+          },
+        ),
+      ],
+    ),
+  );
+}
+
+  //--------------------------------------------------
+  // ✅ MEHR MENÜ
+  //--------------------------------------------------
+  void _showMoreMenu() {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius:
+          BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+
+          ListTile(
+            leading: const Icon(Icons.contact_mail_outlined),
+            title: const Text("Kontakt"),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ContactScreen(),
+                ),
+              );
+            },
+          ),
+
+          //--------------------------------------------------
+          // 🌙 / ☀️ THEME SWITCH (FINAL)
+          //--------------------------------------------------
+          ListTile(
+            leading: Icon(
+              themeNotifier.value == ThemeMode.dark
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
+            ),
+            title: Text(
+              themeNotifier.value == ThemeMode.dark
+                  ? "Zu Hell wechseln"
+                  : "Zu Dunkel wechseln",
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              toggleTheme();
+            },
+          ),
+
+          const SizedBox(height: 10),
+        ],
+      ),
+    ),
+  );
+}
+
+  //--------------------------------------------------
+  // ✅ PAGE SWITCH (FIX für Orte!)
+  //--------------------------------------------------
+  Widget _buildPage() {
+    switch (_currentIndex) {
+
+      case 0:
+        return const NewsScreen();
+
+      case 1:
+        return const HomeScreen(); // Termine
+
+      case 2:
+        return const MiscScreen(); // ✅ ORTE FIX
+
+      default:
+        return const HomeScreen();
+    }
+  }
+
+  //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],
 
+      //--------------------------------------------------
+      // ✅ BODY
+      //--------------------------------------------------
+      body: _buildPage(),
+
+      //--------------------------------------------------
+      // ✅ NAVIGATION
+      //--------------------------------------------------
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         selectedItemColor: const Color(0xFF2E7D32),
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
 
-onTap: (index) {
+        onTap: (index) {
 
-  if (index == 4) {
-    // ✅ DARK MODE SWITCH
-    if (themeNotifier.value == ThemeMode.light) {
-      themeNotifier.value = ThemeMode.dark;
-    } else if (themeNotifier.value == ThemeMode.dark) {
-      themeNotifier.value = ThemeMode.system;
-    } else {
-      themeNotifier.value = ThemeMode.light;
-    }
-    return;
-  }
+          //--------------------------------------------------
+          // 🔥 SUPPORT (JETZT MIT DIALOG)
+          //--------------------------------------------------
+          if (index == 3) {
+            _openSupportDialog();
+            return;
+          }
 
-  setState(() => _currentIndex = index);
-},
+          //--------------------------------------------------
+          // ⋯ MEHR
+          //--------------------------------------------------
+          if (index == 4) {
+            _showMoreMenu();
+            return;
+          }
 
-   items: const [
-  BottomNavigationBarItem(
-    icon: Icon(Icons.newspaper),
-    label: 'News',
-  ),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.event),
-    label: 'Termine',
-  ),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.sports_martial_arts),
-    label: 'Kontakt',
-  ),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.more_horiz),
-    label: 'Sonstiges',
-  ),
-  BottomNavigationBarItem(
-    icon: Icon(Icons.dark_mode),
-    label: 'Modus',
-  ),
-],
+          //--------------------------------------------------
+          // NORMAL NAV
+          //--------------------------------------------------
+          setState(() => _currentIndex = index);
+        },
 
+        //--------------------------------------------------
+        // ✅ ITEMS
+        //--------------------------------------------------
+        items: const [
+
+          BottomNavigationBarItem(
+            icon: Icon(Icons.article_outlined),
+            label: 'News',
+          ),
+
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today_outlined),
+            label: 'Termine',
+          ),
+
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            label: 'Orte',
+          ),
+
+          //--------------------------------------------------
+          // 🔥 SUPPORT
+          //--------------------------------------------------
+          BottomNavigationBarItem(
+            icon: Stack(
+              children: [
+                Icon(Icons.local_fire_department_outlined),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: SizedBox(
+                    width: 8,
+                    height: 8,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            label: 'Support',
+          ),
+
+          //--------------------------------------------------
+          // ⋯ MEHR
+          //--------------------------------------------------
+          BottomNavigationBarItem(
+            icon: Icon(Icons.more_horiz),
+            label: 'Mehr',
+          ),
+        ],
       ),
     );
   }

@@ -14,12 +14,14 @@ final ValueNotifier<ThemeMode> themeNotifier =
     ValueNotifier(ThemeMode.light);
 
 //--------------------------------------------------
-// ✅ ROBUSTER TOGGLE
+// ✅ ROBUSTER TOGGLE (FIXED)
 //--------------------------------------------------
 void toggleTheme() {
-  final current = themeNotifier.value;
-  themeNotifier.value =
-      current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+  if (themeNotifier.value == ThemeMode.dark) {
+    themeNotifier.value = ThemeMode.light;
+  } else {
+    themeNotifier.value = ThemeMode.dark;
+  }
 }
 
 //--------------------------------------------------

@@ -84,7 +84,7 @@ class MiscScreen extends StatelessWidget {
       Icon(Icons.widgets_outlined, color: Colors.white, size: 35),
       SizedBox(width: 8),
       Text(
-        "Sonstiges",
+        "Orte",
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 30,

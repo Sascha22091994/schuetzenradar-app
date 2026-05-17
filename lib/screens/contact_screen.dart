@@ -143,30 +143,7 @@ class ContactScreen extends StatelessWidget {
             ),
           ),
 
-          //--------------------------------------------------
-          // 🍻 SUPPORT
-          //--------------------------------------------------
-          const SizedBox(height: 30),
-          const Divider(),
-          const SizedBox(height: 20),
 
-          const Text(
-            "🍻 Support",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          const Text(
-            "Wenn dir die App gefällt und du mich unterstützen möchtest,\n"
-            "dann gib mir doch einfach ein Bier aus 🍺\n\n"
-            "Vielen Dank für deinen Support 🙌",
-          ),
-
-          const SizedBox(height: 15),
 
           //--------------------------------------------------
           // ✅ ANIMIERTER BUTTON

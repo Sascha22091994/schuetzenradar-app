@@ -10,6 +10,7 @@ import '../services/admin_service.dart';
 import '../screens/taxi_screen.dart';
 import 'package:geolocator/geolocator.dart';
 
+
 enum SortMode {
   date,
   distance,
@@ -59,6 +60,7 @@ SortMode _sortMode = SortMode.date;
         permission == LocationPermission.deniedForever) {
       return;
     }
+
 
     final pos = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.medium,
