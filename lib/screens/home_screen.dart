@@ -116,9 +116,9 @@ double? _distanceInKm(Festival f) {
     return !start.isAfter(today) && !end.isBefore(today);
   }
 
-  bool _hasToday(List<Festival> list) {
-    return list.any((f) => _isToday(f));
-  }
+//  bool _hasToday(List<Festival> list) {
+ //   return list.any((f) => _isToday(f));
+  //}
 
   //--------------------------------------------------
   List<Festival> _applyFilter(List<Festival> festivals) {

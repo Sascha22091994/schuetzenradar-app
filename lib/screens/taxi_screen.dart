@@ -1,115 +1,307 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-//import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class Taxi {
+  final String id;
+  final String name;
+  final List<String> areas;
+  final String phone;
+
+  Taxi({
+    required this.id,
+    required this.name,
+    required this.areas,
+    required this.phone,
+  });
+
+  factory Taxi.fromMap(String id, Map<String, dynamic> map) {
+    return Taxi(
+      id: id,
+      name: map['name'] ?? '',
+      phone: map['phone'] ?? '',
+      areas: List<String>.from(map['areas'] ?? []),
+    );
+  }
+}
 
 class TaxiScreen extends StatelessWidget {
   const TaxiScreen({super.key});
 
   //--------------------------------------------------
-  // ✅ ANRUF FUNKTION
+  // ✅ PREMIUM CALL DIALOG
   //--------------------------------------------------
-  Future<void> _callNumber(String number) async {
-    final cleaned = number.replaceAll(" ", "");
+  Future<void> _confirmCall(BuildContext context, Taxi taxi) async {
+    final cleaned = taxi.phone.replaceAll(" ", "");
     final uri = Uri.parse("tel:$cleaned");
 
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      debugPrint("Telefon konnte nicht geöffnet werden");
-    }
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+
+              const Icon(Icons.local_taxi, size: 40, color: Colors.amber),
+
+              const SizedBox(height: 12),
+
+              Text(
+                taxi.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+
+              const SizedBox(height: 6),
+
+              Text(
+                taxi.phone,
+                style: const TextStyle(fontSize: 16),
+              ),
+
+              const SizedBox(height: 16),
+
+              const Text("Möchtest du dieses Taxi anrufen?"),
+
+              const SizedBox(height: 20),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Abbrechen"),
+                  ),
+
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                    icon: const Icon(Icons.phone),
+                    label: const Text("Anrufen"),
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  //--------------------------------------------------
+  // ✅ ALLE ORTE ANZEIGEN
+  //--------------------------------------------------
+  void _showAllAreas(BuildContext context, Taxi taxi) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+
+            Text(
+              "${taxi.name} – Gebiet",
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: taxi.areas.map((area) {
+                return Chip(
+                  label: Text(area),
+                  backgroundColor: Colors.grey.shade200,
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 16),
+
+            TextButton(
+              child: const Text("Schließen"),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final taxis = [
-      ["Alt Espelkamp, Kleindorf", "Taxi Urban", "05772 3000"],
-      ["Rahden, Preußisch Ströhen, Sielhorst, Steinbrink, Stelle, Tonnenheide, Varl, Wehe",
-        "Taxi Urban",
-        "05771 844"],
-      ["Rahden", "Wolfgang Kassen Taxi", "05771 1060"],
-      ["Lavelsloh", "Taxi Osterkamp", "05763 2526"],
-    ];
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Taxis in deiner Nähe"),
+        title: const Text("🚕 Taxis in deiner Nähe"),
       ),
 
-      body: ListView(
-        padding: const EdgeInsets.all(12),
-        children: taxis.map((t) {
-          return Card(
-            margin: const EdgeInsets.only(bottom: 8),
-            elevation: 1,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('taxis').snapshots(),
+        builder: (context, snapshot) {
 
-            child: ListTile(
-              leading: const Icon(
-                Icons.local_taxi,
-                color: Colors.amber,
-              ),
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-              //--------------------------------------------------
-              // ✅ NAME
-              //--------------------------------------------------
-              title: Text(
-                t[1],
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
+          final taxis = snapshot.data!.docs.map((doc) {
+            return Taxi.fromMap(
+              doc.id,
+              doc.data() as Map<String, dynamic>,
+            );
+          }).toList();
+
+          //--------------------------------------------------
+          // ✅ SORTIERUNG (PREMIUM!)
+          //--------------------------------------------------
+          taxis.sort((a, b) {
+            final aData = snapshot.data!.docs
+                .firstWhere((d) => d.id == a.id)
+                .data() as Map<String, dynamic>;
+            final bData = snapshot.data!.docs
+                .firstWhere((d) => d.id == b.id)
+                .data() as Map<String, dynamic>;
+
+            return (aData['priority'] ?? 99)
+                .compareTo(bData['priority'] ?? 99);
+          });
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: taxis.length,
+            itemBuilder: (context, index) {
+
+              final taxi = taxis[index];
+              final visibleAreas = taxi.areas.take(3).toList();
+              final extraCount = taxi.areas.length - visibleAreas.length;
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
                 ),
-              ),
 
-              //--------------------------------------------------
-              // ✅ SAUBERE STRUKTUR
-              //--------------------------------------------------
-  subtitle: Padding(
-  padding: const EdgeInsets.only(top: 4),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text("📍 Gebiet:"),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => _confirmCall(context, taxi),
 
-      const SizedBox(height: 2),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
 
-      ...t[0].split(",").map((place) => Padding(
-            padding: const EdgeInsets.only(left: 4),
-            child: Text("• ${place.trim()}"),
-          )),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
 
-      const SizedBox(height: 4),
+                        const Icon(
+                          Icons.local_taxi,
+                          color: Colors.amber,
+                          size: 28,
+                        ),
 
-      Text(
-        "📞 ${t[2]}",
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
-    ],
-  ),
-),
+                        const SizedBox(width: 12),
 
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
 
-              isThreeLine: true,
+                              Text(
+                                taxi.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
 
-              //--------------------------------------------------
-              // ✅ GANZER EINTRAG KLICKBAR
-              //--------------------------------------------------
-              onTap: () => _callNumber(t[2]),
+                              const SizedBox(height: 6),
 
-              //--------------------------------------------------
-              // ✅ CALL BUTTON
-              //--------------------------------------------------
-              trailing: IconButton(
-                icon: const Icon(
-                  Icons.phone,
-                  color: Colors.green,
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: [
+
+                                  ...visibleAreas.map((area) => Chip(
+                                        label: Text(area),
+                                        backgroundColor:
+                                            Colors.grey.shade200,
+                                        labelStyle: const TextStyle(fontSize: 12),
+                                      )),
+
+                                  if (extraCount > 0)
+                                    GestureDetector(
+                                      onTap: () =>
+                                          _showAllAreas(context, taxi),
+                                      child: Text(
+                                        "+ $extraCount weitere",
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.blue,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              Text(
+                                "📞 ${taxi.phone}",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        InkWell(
+                          onTap: () => _confirmCall(context, taxi),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade100,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.phone,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                onPressed: () => _callNumber(t[2]),
-              ),
-            ),
+              );
+            },
           );
-        }).toList(),
+        },
       ),
     );
   }
