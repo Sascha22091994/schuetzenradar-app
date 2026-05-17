@@ -8,6 +8,12 @@ import '../services/email_service.dart';
 import '../services/favorite_service.dart';
 import '../services/admin_service.dart';
 import '../screens/taxi_screen.dart';
+import 'package:geolocator/geolocator.dart';
+
+enum SortMode {
+  date,
+  distance,
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,8 +26,79 @@ class _HomeScreenState extends State<HomeScreen> {
 
   MonthFilter _filter = MonthFilter.all;
   String _searchQuery = '';
+  bool _showAdvanced = false;
+  
+
+
+SortMode _sortMode = SortMode.date;
+
+
+  // ✅ GEO STATE NEU
+  Position? _userPosition;
+  double _radiusKm = 25;
 
   DateTime get now => DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocation(); // ✅ NEU
+  }
+
+  //--------------------------------------------------
+  // ✅ GEO: LOCATION LADEN (NEU)
+  //--------------------------------------------------
+  Future<void> _loadLocation() async {
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      return;
+    }
+
+    final pos = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.medium,
+    );
+
+    setState(() {
+      _userPosition = pos;
+    });
+  }
+
+  //--------------------------------------------------
+  // ✅ GEO: DISTANZ CHECK (NEU)
+  //--------------------------------------------------
+bool _isWithinRadius(Festival f) {
+  if (_userPosition == null) return true;
+
+  final distance = Geolocator.distanceBetween(
+    _userPosition!.latitude,
+    _userPosition!.longitude,
+    f.latitude,
+    f.longitude,
+  );
+
+  return distance <= _radiusKm * 1000;
+}
+
+// ✅ HIERHIN!
+double? _distanceInKm(Festival f) {
+  if (_userPosition == null) return null;
+
+  final distanceMeters = Geolocator.distanceBetween(
+    _userPosition!.latitude,
+    _userPosition!.longitude,
+    f.latitude,
+    f.longitude,
+  );
+
+  return distanceMeters / 1000;
+}
+
 
   //--------------------------------------------------
   bool _isPast(Festival f) {
@@ -82,11 +159,24 @@ class _HomeScreenState extends State<HomeScreen> {
       list = list.where((f) => !_isPast(f)).toList();
     }
 
-    list.sort((a, b) {
-      if (_isToday(a)) return -1;
-      if (_isToday(b)) return 1;
-      return a.startDate.compareTo(b.startDate);
-    });
+  // ✅ GEO FILTER zuerst
+if (_userPosition != null) {
+  list = list.where(_isWithinRadius).toList();
+}
+
+if (_sortMode == SortMode.distance && _userPosition != null) {
+  list.sort((a, b) {
+    final distA = _distanceInKm(a) ?? 999999;
+    final distB = _distanceInKm(b) ?? 999999;
+    return distA.compareTo(distB);
+  });
+} else {
+  list.sort((a, b) {
+    if (_isToday(a)) return -1;
+    if (_isToday(b)) return 1;
+    return a.startDate.compareTo(b.startDate);
+  });
+}
 
     return list;
   }
@@ -159,40 +249,12 @@ class _HomeScreenState extends State<HomeScreen> {
           body: Column(
             children: [
 
-              //--------------------------------------------------
-              // ✅ HEADER (NEU)
-              //--------------------------------------------------
-              Container(
-                margin: const EdgeInsets.all(12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade700,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.event, color: Colors.white),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _hasToday(filtered)
-                            ? "Heute finden Schützenfeste statt 🎉"
-                            : "Heute keine Schützenfeste",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
+              
               //--------------------------------------------------
               // FILTER
               //--------------------------------------------------
               SizedBox(
-                height: 60,
+                height: 45,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -209,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              //--------------------------------------------------
+//--------------------------------------------------
               // SEARCH
               //--------------------------------------------------
               Padding(
@@ -232,55 +294,144 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
+//--------------------------------------------------
+// ✅ GEO INFO (OPTIONAL)
+//--------------------------------------------------
+if (_userPosition == null)
+  const Padding(
+    padding: EdgeInsets.symmetric(vertical: 4),
+    child: Text(
+      "📍 Standort wird geladen...",
+      style: TextStyle(fontSize: 12, color: Colors.grey),
+    ),
+  ),
+
+//--------------------------------------------------
+// ✅ WEITERE OPTIONEN BUTTON
+//--------------------------------------------------
+Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 12),
+  child: Align(
+    alignment: Alignment.centerLeft,
+    child: TextButton.icon(
+      onPressed: () {
+        setState(() {
+          _showAdvanced = !_showAdvanced;
+        });
+      },
+      icon: Icon(_showAdvanced ? Icons.expand_less : Icons.expand_more),
+      label: const Text("Weitere Optionen"),
+    ),
+  ),
+),
+
+//--------------------------------------------------
+// ✅ ERWEITERTE OPTIONEN (NEU)
+//--------------------------------------------------
+if (_showAdvanced)
+  Column(
+    children: [
+
+      //--------------------------------------------------
+      // SORTIERUNG
+      //--------------------------------------------------
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          children: [
+            ChoiceChip(
+              label: const Text("📅 Datum"),
+              selected: _sortMode == SortMode.date,
+              onSelected: (_) {
+                setState(() => _sortMode = SortMode.date);
+              },
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: const Text("📍 Entfernung"),
+              selected: _sortMode == SortMode.distance,
+              onSelected: (_) {
+                setState(() => _sortMode = SortMode.distance);
+              },
+            ),
+          ],
+        ),
+      ),
+
+      //--------------------------------------------------
+      // RADIUS
+      //--------------------------------------------------
+      if (_userPosition != null)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("📍 Umkreis: ${_radiusKm.round()} km"),
+              Slider(
+                value: _radiusKm,
+                min: 5,
+                max: 100,
+                divisions: 19,
+                onChanged: (value) {
+                  setState(() {
+                    _radiusKm = value;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+    ],
+  ),
+              
+
+
+
+
+
+
               //--------------------------------------------------
               // 🚕 TAXI BUTTON (AUFGEWERTET)
               //--------------------------------------------------
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const TaxiScreen(),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade400,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha:0.2),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.local_taxi, color: Colors.black),
-                          SizedBox(width: 8),
-                          Text(
-                            "🚕 Taxi schnell finden",
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+  child: Align(
+    alignment: Alignment.centerLeft,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const TaxiScreen(),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade300,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.local_taxi, size: 18, color: Colors.black),
+            SizedBox(width: 6),
+            Text(
+              "Taxi finden",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
               ),
-
+            ),
+          ],
+        ),
+      ),
+    ),
+  ),
+),
               //--------------------------------------------------
               // LISTE (UNVERÄNDERT!)
               //--------------------------------------------------
@@ -289,63 +440,85 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
 
                     ...filtered.map((f) {
-                      return Dismissible(
-                        key: Key(f.id),
-                        direction: AdminService.isAdmin
-                            ? DismissDirection.endToStart
-                            : DismissDirection.none,
 
-                        confirmDismiss: (_) async {
-                          return await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text("Löschen?"),
-                              content: const Text("Bist du sicher?"),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(ctx, false),
-                                  child: const Text("Abbrechen"),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(ctx, true),
-                                  child: const Text("Löschen"),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+  final distance = _distanceInKm(f); // ✅ NEU
 
-                        onDismissed: (_) async {
-                          await FirebaseFirestore.instance
-                              .collection('festivals')
-                              .doc(f.id)
-                              .delete();
-                        },
+  return Dismissible(
+    key: Key(f.id),
+    direction: AdminService.isAdmin
+        ? DismissDirection.endToStart
+        : DismissDirection.none,
 
-                        background: Container(
-                          color: Colors.red,
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          child: const Icon(Icons.delete, color: Colors.white),
-                        ),
+    confirmDismiss: (_) async {
+      return await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Löschen?"),
+          content: const Text("Bist du sicher?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Abbrechen"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text("Löschen"),
+            ),
+          ],
+        ),
+      );
+    },
 
-                        child: GestureDetector(
-                          onLongPress: () {
-                            if (AdminService.isAdmin) {
-                              _showEditFestivalDialog(f);
-                            }
-                          },
-child: FestivalCard(
-  festival: f,
-  onFavoriteChanged: () {
-    setState(() {}); // ✅ DAS ist der Fix!
-  },
-),                        ),
-                      );
-                    }),
+    onDismissed: (_) async {
+      await FirebaseFirestore.instance
+          .collection('festivals')
+          .doc(f.id)
+          .delete();
+    },
 
+    background: Container(
+      color: Colors.red,
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.only(right: 20),
+      child: const Icon(Icons.delete, color: Colors.white),
+    ),
+
+    child: GestureDetector(
+      onLongPress: () {
+        if (AdminService.isAdmin) {
+          _showEditFestivalDialog(f);
+        }
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          FestivalCard(
+            festival: f,
+            onFavoriteChanged: () {
+              setState(() {});
+            },
+          ),
+
+          // ✅ NEU: DISTANZ ANZEIGE
+          if (distance != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 16, bottom: 8),
+              child: Text(
+                "📍 ${distance.toStringAsFixed(1)} km entfernt",
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}),
+
+                  
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: ElevatedButton.icon(

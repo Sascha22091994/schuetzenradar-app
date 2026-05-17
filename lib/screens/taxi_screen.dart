@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-//import 'package:firebase_crashlytics/firebase_crashlytics.dart'; // ✅ NEU
+//import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 class TaxiScreen extends StatelessWidget {
   const TaxiScreen({super.key});
@@ -22,39 +22,73 @@ class TaxiScreen extends StatelessWidget {
   //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
-
     final taxis = [
-      ["Alt Espelkamp, Rahden", "Taxi Blanke", "05771 2107"],
       ["Alt Espelkamp, Kleindorf", "Taxi Urban", "05772 3000"],
-      ["Rahden, Preußisch Ströhen, Sielhorst, Steinbrink, Stelle, Tonnenheide, Varl, Wehe", "Taxi Urban", "05771 844"],
+      ["Rahden, Preußisch Ströhen, Sielhorst, Steinbrink, Stelle, Tonnenheide, Varl, Wehe",
+        "Taxi Urban",
+        "05771 844"],
       ["Rahden", "Wolfgang Kassen Taxi", "05771 1060"],
       ["Lavelsloh", "Taxi Osterkamp", "05763 2526"],
     ];
 
     return Scaffold(
       appBar: AppBar(
-        //--------------------------------------------------
-        // ✅ DEZENTER CRASH TRIGGER (LONG PRESS)
-        //--------------------------------------------------
-        title: GestureDetector(
-         // onLongPress: () {
-          //  FirebaseCrashlytics.instance.crash(); // 💥 nur bei lang drücken
-          //},
-          child: const Text("Taxis im Kreis"),
-        ),
+        title: const Text("Taxis in deiner Nähe"),
       ),
 
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: taxis.map((t) {
-
           return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+
             child: ListTile(
-              leading: const Icon(Icons.local_taxi),
+              leading: const Icon(
+                Icons.local_taxi,
+                color: Colors.amber,
+              ),
 
-              title: Text(t[1]),
+              //--------------------------------------------------
+              // ✅ NAME
+              //--------------------------------------------------
+              title: Text(
+                t[1],
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
 
-              subtitle: Text("${t[0]}\nTel: ${t[2]}"),
+              //--------------------------------------------------
+              // ✅ SAUBERE STRUKTUR
+              //--------------------------------------------------
+  subtitle: Padding(
+  padding: const EdgeInsets.only(top: 4),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text("📍 Gebiet:"),
+
+      const SizedBox(height: 2),
+
+      ...t[0].split(",").map((place) => Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text("• ${place.trim()}"),
+          )),
+
+      const SizedBox(height: 4),
+
+      Text(
+        "📞 ${t[2]}",
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+    ],
+  ),
+),
+
 
               isThreeLine: true,
 
@@ -64,15 +98,17 @@ class TaxiScreen extends StatelessWidget {
               onTap: () => _callNumber(t[2]),
 
               //--------------------------------------------------
-              // ✅ TELEFON ICON EXTRA
+              // ✅ CALL BUTTON
               //--------------------------------------------------
               trailing: IconButton(
-                icon: const Icon(Icons.phone),
+                icon: const Icon(
+                  Icons.phone,
+                  color: Colors.green,
+                ),
                 onPressed: () => _callNumber(t[2]),
               ),
             ),
           );
-
         }).toList(),
       ),
     );

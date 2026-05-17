@@ -2,9 +2,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 class EmailService {
 
-  //--------------------------------------------------
-  // ✅ FEEDBACK SENDEN (FLEXIBEL)
-  //--------------------------------------------------
   static Future<void> sendFeedback({
     String subject = "SchützenRadar – Feedback & Kontakt",
     String body = _defaultBody,
@@ -20,13 +17,16 @@ class EmailService {
     );
 
     if (await canLaunchUrl(emailUri)) {
-      await launchUrl(emailUri);
+      await launchUrl(
+        emailUri,
+        mode: LaunchMode.externalApplication, // ✅ FIX
+      );
+    } else {
+      // optional: Debug oder Snackbar
+      print("Keine Mail-App gefunden");
     }
   }
 
-  //--------------------------------------------------
-  // ✅ STANDARD TEXT (VERBESSERT)
-  //--------------------------------------------------
   static const String _defaultBody = '''
 Hallo,
 

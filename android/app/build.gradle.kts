@@ -96,6 +96,10 @@ dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
 
+configurations.all {
+    exclude(group = "com.google.android.gms", module = "play-services-ads-identifier")
+}
+
 flutter {
     source = "../.."
 }
