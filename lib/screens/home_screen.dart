@@ -247,37 +247,50 @@ f.address.toLowerCase().contains(_searchQuery)
     list = list.where(_isWithinRadius).toList();
   }
 
-  //--------------------------------------------------
-  // ✅ 4. SORTIERUNG
-  //--------------------------------------------------
+//------------------------------------------
+// ✅ SORTIERUNG (FINAL FIXED)
+//------------------------------------------
+
+final today = DateTime(now.year, now.month, now.day);
+
+list.sort((a, b) {
+  //------------------------------------------
+  // 🔥 1. HEUTE / LIVE GANZ OBEN
+  //------------------------------------------
+  final aIsToday = _isToday(a);
+  final bIsToday = _isToday(b);
+
+  if (aIsToday && !bIsToday) return -1;
+  if (bIsToday && !aIsToday) return 1;
+
+  //------------------------------------------
+  // 📍 2. DISTANCE MODE
+  //------------------------------------------
   if (_sortMode == SortMode.distance && _userPosition != null) {
-    list.sort((a, b) {
-      final distA = _distanceInKm(a) ?? 999999;
-      final distB = _distanceInKm(b) ?? 999999;
-      return distA.compareTo(distB);
-    });
-  } else {
-    final today = DateTime(now.year, now.month, now.day);
-
-    list.sort((a, b) {
-      final aStart = DateTime(
-          a.startDate.year, a.startDate.month, a.startDate.day);
-      final bStart = DateTime(
-          b.startDate.year, b.startDate.month, b.startDate.day);
-
-      // ✅ nächstes Event oben
-      final aDiff = aStart.difference(today).inDays;
-      final bDiff = bStart.difference(today).inDays;
-
-      // negative Werte (Vergangenheit) nach unten schieben
-      final aScore = aDiff < 0 ? 99999 : aDiff;
-      final bScore = bDiff < 0 ? 99999 : bDiff;
-
-      return aScore.compareTo(bScore);
-    });
+    final distA = _distanceInKm(a) ?? 999999;
+    final distB = _distanceInKm(b) ?? 999999;
+    return distA.compareTo(distB);
   }
 
-  return list;
+  //------------------------------------------
+  // 📅 3. DATUM
+  //------------------------------------------
+  final aStart = DateTime(
+      a.startDate.year, a.startDate.month, a.startDate.day);
+  final bStart = DateTime(
+      b.startDate.year, b.startDate.month, b.startDate.day);
+
+  final aDiff = aStart.difference(today).inDays;
+  final bDiff = bStart.difference(today).inDays;
+
+  final aScore = aDiff < 0 ? 99999 : aDiff;
+  final bScore = bDiff < 0 ? 99999 : bDiff;
+
+  return aScore.compareTo(bScore);
+});
+
+// ✅ GANZ WICHTIG!
+return list;
 }
 
   //--------------------------------------------------
@@ -372,24 +385,50 @@ f.address.toLowerCase().contains(_searchQuery)
 if (_getActiveFiltersText().isNotEmpty)
   Padding(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.green.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.filter_list, size: 16),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              _getActiveFiltersText(),
-              style: const TextStyle(fontSize: 12),
-              overflow: TextOverflow.ellipsis,
+    child: GestureDetector(
+      onTap: () {
+        setState(() {
+          _filter = MonthFilter.all;
+          _searchQuery = '';
+          _showAdvanced = false;
+          _sortMode = SortMode.date;
+          _radiusKm = 25;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.green.shade100,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.filter_list, size: 16, color: Colors.green),
+            const SizedBox(width: 6),
+
+            Expanded(
+              child: Text(
+                _getActiveFiltersText(),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-        ],
+
+            const SizedBox(width: 8),
+
+            const Text(
+              "Zurücksetzen",
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   ),
