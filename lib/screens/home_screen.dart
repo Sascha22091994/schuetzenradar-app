@@ -9,6 +9,7 @@ import '../services/favorite_service.dart';
 import '../services/admin_service.dart';
 import '../screens/taxi_screen.dart';
 import 'package:geolocator/geolocator.dart';
+import '../screens/map_screen.dart';
 
 
 enum SortMode {
@@ -32,61 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
 SortMode _sortMode = SortMode.date;
-String _getActiveFiltersText() {
-  List<String> active = [];
 
-  if (_filter != MonthFilter.all) {
-    final label = _getFilterLabel();
-    if (label.isNotEmpty) {
-      active.add(label);
-    }
-  }
 
-  if (_showAdvanced && _userPosition != null) {
-    active.add("Umkreis ${_radiusKm.round()} km");
-  }
-
-  if (_sortMode == SortMode.distance && _userPosition != null) {
-    active.add("Sortiert nach Nähe");
-  }
-
-  if (_searchQuery.isNotEmpty) {
-    active.add("Suche: \"$_searchQuery\"");
-  }
-
-  return active.join(" • ");
-}
-
-String _getFilterLabel() {
-  switch (_filter) {
-    case MonthFilter.today:
-      return "Heute";
-
-    case MonthFilter.may:
-      return "Mai";
-
-    case MonthFilter.june:
-      return "Juni";
-
-    case MonthFilter.july:
-      return "Juli";
-
-    case MonthFilter.august:
-      return "August";
-
-    case MonthFilter.past:
-      return "Vergangen";
-
-    case MonthFilter.favorites:
-      return "Favoriten";
-
-    case MonthFilter.weekend:
-      return "Wochenende"; // ✅ neu hinzugefügt
-
-    case MonthFilter.all:
-      return ""; // bewusst leer (kein Filter aktiv)
-  }
-}
   // ✅ GEO STATE NEU
   Position? _userPosition;
   double _radiusKm = 25;
@@ -115,18 +63,16 @@ String _getFilterLabel() {
     }
 
 
+    final pos = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.medium,
+    );
 
-try {
-  final pos = await Geolocator.getCurrentPosition(
-    desiredAccuracy: LocationAccuracy.medium,
-  );
+    if (!mounted) return;
 
-  setState(() {
-    _userPosition = pos;
-  });
-} catch (e) {
-  debugPrint("Location error: $e");
-}
+setState(() {
+  _userPosition = pos;
+});
+
   }
 
   //--------------------------------------------------
@@ -181,117 +127,65 @@ double? _distanceInKm(Festival f) {
   //}
 
   //--------------------------------------------------
-List<Festival> _applyFilter(List<Festival> festivals) {
-  List<Festival> list = List.from(festivals);
+  List<Festival> _applyFilter(List<Festival> festivals) {
 
-  //--------------------------------------------------
-  // ✅ 1. FILTER (MONATE / FAVORITEN)
-  //--------------------------------------------------
-switch (_filter) {
-  case MonthFilter.all:
-    break;
+    List<Festival> list;
 
-  case MonthFilter.favorites:
-    list = list.where(
-      (f) => FavoriteService.isFavorite(f.id),
-    ).toList();
-    break;
+    if (_filter == MonthFilter.favorites) {
+      list = festivals.where((f) => FavoriteService.isFavorite(f.id)).toList();
+    } else {
+      list = festivals.where((f) {
+        switch (_filter) {
+          case MonthFilter.past:
+            return _isPast(f);
+          case MonthFilter.today:
+            return _isToday(f);
+          case MonthFilter.may:
+            return f.startDate.month == 5;
+          case MonthFilter.june:
+            return f.startDate.month == 6;
+          case MonthFilter.july:
+            return f.startDate.month == 7;
+          case MonthFilter.august:
+            return f.startDate.month == 8;
+          default:
+            return true;
+        }
+      }).toList();
+    }
 
-  case MonthFilter.past:
-    list = list.where(_isPast).toList();
-    break;
+    if (_searchQuery.isNotEmpty) {
+      list = list.where((f) =>
+          f.name.toLowerCase().contains(_searchQuery) ||
+          f.address.toLowerCase().contains(_searchQuery)
+      ).toList();
+    }
 
-  case MonthFilter.today:
-    list = list.where(_isToday).toList();
-    break;
+    if (_filter != MonthFilter.past) {
+      list = list.where((f) => !_isPast(f)).toList();
+    }
 
-  case MonthFilter.may:
-    list = list.where((f) => f.startDate.month == 5).toList();
-    break;
-
-  case MonthFilter.june:
-    list = list.where((f) => f.startDate.month == 6).toList();
-    break;
-
-  case MonthFilter.july:
-    list = list.where((f) => f.startDate.month == 7).toList();
-    break;
-
-  case MonthFilter.august:
-    list = list.where((f) => f.startDate.month == 8).toList();
-    break;
-
-  case MonthFilter.weekend:
-    list = list; 
-    break;
+  // ✅ GEO FILTER zuerst
+if (_userPosition != null) {
+  list = list.where(_isWithinRadius).toList();
 }
 
-  //--------------------------------------------------
-  // ✅ 2. SUCHE
-  //--------------------------------------------------
-  if (_searchQuery.isNotEmpty) {
-    list = list.where((f) =>
-
-
-f.name.toLowerCase().contains(_searchQuery) ||
-f.address.toLowerCase().contains(_searchQuery)
-
-
-    ).toList();
-  }
-
-  //--------------------------------------------------
-  // ✅ 3. RADIUS NUR WENN ERWEITERT AKTIV
-  //--------------------------------------------------
-  if (_showAdvanced && _userPosition != null) {
-    list = list.where(_isWithinRadius).toList();
-  }
-
-//------------------------------------------
-// ✅ SORTIERUNG (FINAL FIXED)
-//------------------------------------------
-
-final today = DateTime(now.year, now.month, now.day);
-
-list.sort((a, b) {
-  //------------------------------------------
-  // 🔥 1. HEUTE / LIVE GANZ OBEN
-  //------------------------------------------
-  final aIsToday = _isToday(a);
-  final bIsToday = _isToday(b);
-
-  if (aIsToday && !bIsToday) return -1;
-  if (bIsToday && !aIsToday) return 1;
-
-  //------------------------------------------
-  // 📍 2. DISTANCE MODE
-  //------------------------------------------
-  if (_sortMode == SortMode.distance && _userPosition != null) {
+if (_sortMode == SortMode.distance && _userPosition != null) {
+  list.sort((a, b) {
     final distA = _distanceInKm(a) ?? 999999;
     final distB = _distanceInKm(b) ?? 999999;
     return distA.compareTo(distB);
-  }
-
-  //------------------------------------------
-  // 📅 3. DATUM
-  //------------------------------------------
-  final aStart = DateTime(
-      a.startDate.year, a.startDate.month, a.startDate.day);
-  final bStart = DateTime(
-      b.startDate.year, b.startDate.month, b.startDate.day);
-
-  final aDiff = aStart.difference(today).inDays;
-  final bDiff = bStart.difference(today).inDays;
-
-  final aScore = aDiff < 0 ? 99999 : aDiff;
-  final bScore = bDiff < 0 ? 99999 : bDiff;
-
-  return aScore.compareTo(bScore);
-});
-
-// ✅ GANZ WICHTIG!
-return list;
+  });
+} else {
+  list.sort((a, b) {
+    if (_isToday(a)) return -1;
+    if (_isToday(b)) return 1;
+    return a.startDate.compareTo(b.startDate);
+  });
 }
+
+    return list;
+  }
 
   //--------------------------------------------------
   @override
@@ -382,56 +276,6 @@ return list;
                   ],
                 ),
               ),
-if (_getActiveFiltersText().isNotEmpty)
-  Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    child: GestureDetector(
-      onTap: () {
-        setState(() {
-          _filter = MonthFilter.all;
-          _searchQuery = '';
-          _showAdvanced = false;
-          _sortMode = SortMode.date;
-          _radiusKm = 25;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.green.shade100,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.filter_list, size: 16, color: Colors.green),
-            const SizedBox(width: 6),
-
-            Expanded(
-              child: Text(
-                _getActiveFiltersText(),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-
-            const SizedBox(width: 8),
-
-            const Text(
-              "Zurücksetzen",
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  ),
 
 //--------------------------------------------------
               // SEARCH
@@ -558,40 +402,81 @@ if (_showAdvanced)
               //--------------------------------------------------
 Padding(
   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-  child: Align(
-    alignment: Alignment.centerLeft,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const TaxiScreen(),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.amber.shade300,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.local_taxi, size: 18, color: Colors.black),
-            SizedBox(width: 6),
-            Text(
-              "Taxi finden",
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
+  child: Row(
+    children: [
+
+      //--------------------------------------------------
+      // 🚕 TAXI BUTTON
+      //--------------------------------------------------
+      InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const TaxiScreen(),
             ),
-          ],
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.amber.shade300,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: const [
+              Icon(Icons.local_taxi, size: 18, color: Colors.black),
+              SizedBox(width: 6),
+              Text(
+                "Taxi",
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
+
+      const SizedBox(width: 10),
+
+      //--------------------------------------------------
+      // 🗺 MAP BUTTON (NEU!)
+      //--------------------------------------------------
+      InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const MapScreen(),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.green.shade300,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: const [
+              Icon(Icons.map, size: 18, color: Colors.black),
+              SizedBox(width: 6),
+              Text(
+                "Karte",
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
   ),
 ),
               //--------------------------------------------------
@@ -704,20 +589,7 @@ Padding(
     final active = _filter == value;
 
     return GestureDetector(
-      onTap: () {
-  setState(() {
-    _filter = value;
-
-    //------------------------------------------
-    // ✅ RESET LOGIK (NEU!)
-    //------------------------------------------
-    _sortMode = SortMode.date;
-
-    if (!_showAdvanced) {
-      _radiusKm = 25; // optional
-    }
-  });
-},
+      onTap: () => setState(() => _filter = value),
       child: Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

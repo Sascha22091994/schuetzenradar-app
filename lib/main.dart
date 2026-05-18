@@ -6,23 +6,37 @@ import 'dart:ui';
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'services/favorite_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+
 
 //--------------------------------------------------
 // ✅ GLOBAL THEME CONTROLLER
 //--------------------------------------------------
 final ValueNotifier<ThemeMode> themeNotifier =
-    ValueNotifier(ThemeMode.light);
+    ValueNotifier(ThemeMode.system);
 
 //--------------------------------------------------
 // ✅ ROBUSTER TOGGLE (FIXED)
 //--------------------------------------------------
-void toggleTheme() {
-  if (themeNotifier.value == ThemeMode.dark) {
-    themeNotifier.value = ThemeMode.light;
-  } else {
-    themeNotifier.value = ThemeMode.dark;
-  }
+
+Future<void> toggleTheme() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  ThemeMode newMode =
+      themeNotifier.value == ThemeMode.dark
+          ? ThemeMode.light
+          : ThemeMode.dark;
+
+  themeNotifier.value = newMode;
+  await prefs.setString(
+    'theme',
+    newMode == ThemeMode.dark ? 'dark' : 'light',
+  );
 }
+
 
 //--------------------------------------------------
 // ✅ MAIN
@@ -35,20 +49,71 @@ void main() {
       //--------------------------------------------------
       // ✅ FIREBASE INIT
       //--------------------------------------------------
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+     await Firebase.initializeApp(
+  options: DefaultFirebaseOptions.currentPlatform,
+);
+// ✅ THEME LADEN (NEU)
+final prefs = await SharedPreferences.getInstance();
+final savedTheme = prefs.getString('theme');
+
+if (savedTheme == 'dark') {
+  themeNotifier.value = ThemeMode.dark;
+} else if (savedTheme == 'light') {
+  themeNotifier.value = ThemeMode.light;
+} else {
+  themeNotifier.value = ThemeMode.system;
+}
+
+
+// ✅ HIER NEU
+if (!kIsWeb) {
+  final settings =
+      await FirebaseMessaging.instance.requestPermission();
+
+  debugPrint("Push Permission: ${settings.authorizationStatus}");
+
+  final token = await FirebaseMessaging.instance.getToken();
+  debugPrint("🔥 FCM Token: $token");
+
+  //--------------------------------------------------
+  // ✅ NEU: GLOBAL ADMIN TOPIC
+  //--------------------------------------------------
+  await FirebaseMessaging.instance.subscribeToTopic("all");
+  debugPrint("📢 Subscribed to global topic: all");
+
+  //--------------------------------------------------
+  // ✅ PUSH IM VORDERGRUND
+  //--------------------------------------------------
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    debugPrint("📩 Push erhalten:");
+    debugPrint("Titel: ${message.notification?.title}");
+    debugPrint("Text: ${message.notification?.body}");
+  });
+}
+      
 
       //--------------------------------------------------
       // ✅ CRASHLYTICS SETUP (ERWEITERT)
       //--------------------------------------------------
-      FlutterError.onError =
-          FirebaseCrashlytics.instance.recordFlutterFatalError;
+//--------------------------------------------------
+// ✅ CRASHLYTICS SETUP (FINAL BEST PRACTICE)
+//--------------------------------------------------
+if (!kIsWeb) {
 
-      PlatformDispatcher.instance.onError = (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-        return true;
-      };
+  // Flutter Fehler
+  FlutterError.onError =
+      FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+  // Async / native Fehler
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
+
+  // optional aktivieren
+  await FirebaseCrashlytics.instance
+      .setCrashlyticsCollectionEnabled(true);
+}
 
       //--------------------------------------------------
       // ✅ SERVICES (HIER WAR DEIN BUG ✅)

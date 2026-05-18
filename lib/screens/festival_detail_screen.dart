@@ -7,6 +7,7 @@ import '../models/festival.dart';
 import '../models/location.dart';
 import 'location_detail_screen.dart';
 
+
 class FestivalDetailScreen extends StatelessWidget {
   final Festival festival;
 

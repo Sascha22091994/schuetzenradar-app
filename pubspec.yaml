@@ -2,7 +2,7 @@ name: schuetzenfest_app
 description: "SchützenRadar App"
 publish_to: 'none'
 
-version: 1.0.7+27   # ✅ Version hochziehen für Apple Re-Upload!
+version: 1.0.7+28   # ✅ Version hochziehen für Apple Re-Upload!
 
 environment:
   sdk: ^3.11.1
@@ -18,9 +18,11 @@ dependencies:
   firebase_core: ^3.13.0
   cloud_firestore: ^5.6.0
   share_plus: ^7.2.1
+  firebase_messaging: 15.2.10
 
   cupertino_icons: ^1.0.8
   firebase_crashlytics: ^4.3.10
+  
 
 dev_dependencies:
   flutter_test:

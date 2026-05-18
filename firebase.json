@@ -1,1 +1,42 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"schuetzenfest-app","appId":"1:66726540458:android:e7f5601531cbd446cdccd3","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"schuetzenfest-app","configurations":{"android":"1:66726540458:android:e7f5601531cbd446cdccd3","ios":"1:66726540458:ios:ed6f9235bb61feaacdccd3","macos":"1:66726540458:ios:ed6f9235bb61feaacdccd3","web":"1:66726540458:web:52df7913bc511c63cdccd3","windows":"1:66726540458:web:3fa646f86d93f368cdccd3"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "schuetzenfest-app",
+          "appId": "1:66726540458:android:e7f5601531cbd446cdccd3",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "schuetzenfest-app",
+          "configurations": {
+            "android": "1:66726540458:android:e7f5601531cbd446cdccd3",
+            "ios": "1:66726540458:ios:ed6f9235bb61feaacdccd3",
+            "macos": "1:66726540458:ios:ed6f9235bb61feaacdccd3",
+            "web": "1:66726540458:web:52df7913bc511c63cdccd3",
+            "windows": "1:66726540458:web:3fa646f86d93f368cdccd3"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ]
+    }
+  ]
+}
