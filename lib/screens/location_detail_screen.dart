@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/location.dart';
 import 'adler_login_screen.dart';
+import 'archiv_screen.dart';
 
 
 
@@ -99,7 +100,11 @@ class LocationDetailScreen extends StatelessWidget {
           //--------------------------------------------------
           // 🦅 ADLERSCHIESSEN
           //--------------------------------------------------
-if (location.hasAdler)
+if (location.hasAdler) ...[
+
+  //--------------------------------------------------
+  // 🦅 LIVE
+  //--------------------------------------------------
   Card(
     child: ListTile(
       leading: const Icon(Icons.emoji_events),
@@ -117,6 +122,29 @@ if (location.hasAdler)
       },
     ),
   ),
+
+  //--------------------------------------------------
+  // 📂 ARCHIV (NEU!)
+  //--------------------------------------------------
+  Card(
+    child: ListTile(
+      leading: const Icon(Icons.archive_outlined),
+      title: const Text("Archiv Adlerschießen"),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ArchivScreen(
+              locationId: location.id,
+            ),
+          ),
+        );
+      },
+    ),
+  ),
+
+],
+
 
           //--------------------------------------------------
           // FALLBACK (wenn nichts vorhanden)

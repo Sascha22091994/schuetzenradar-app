@@ -4,11 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class AdlerScreen extends StatefulWidget {
   final String locationId;
   final String locationName;
+  
 
   const AdlerScreen({
     super.key,
     required this.locationId,
     required this.locationName,
+    
   });
 
   @override
@@ -16,7 +18,7 @@ class AdlerScreen extends StatefulWidget {
 }
 
 class _AdlerScreenState extends State<AdlerScreen> {
-
+  bool showInfo = true;
   final TextEditingController nameController = TextEditingController();
   String selectedEvent = "jung";
 
@@ -104,6 +106,7 @@ return await db.collection('news').add({
   void initState() {
     super.initState();
     _loadBothEvents();
+    _checkInactivityAuto();
   }
 
   Future<void> _loadBothEvents() async {
@@ -125,6 +128,8 @@ return await db.collection('news').add({
         "players": List<String>.from(data['participants'] ?? []),
       };
     }
+
+
     setState(() {});
   }
 
@@ -156,31 +161,214 @@ return await db.collection('news').add({
         .set({"isLive": isActive}, SetOptions(merge: true));
   }
 
-  //--------------------------------------------------
-  Future<void> _resetGame() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Reset?"),
-        content: const Text("Alles zurücksetzen?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Abbrechen")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("OK")),
-        ],
-      ),
-    );
+//--------------------------------------------------
+// ✅ ARCHIVIEREN (NEU)
+//--------------------------------------------------
+Future<void> _archiveCurrentGame() async {
+  final db = FirebaseFirestore.instance;
 
-    if (confirm != true) return;
+  for (var event in ["jung", "alt"]) {
+    final data = eventData[event]!;
 
-    setState(() {
-      current['shots'] = 0;
-      current['kingName'] = null;
-      current['results'].clear();
-      current['players'].clear();
-    });
+    // ✅ nur archivieren wenn Daten vorhanden
+    if (data['shots'] == 0 &&
+        data['players'].isEmpty &&
+        data['results'].isEmpty) {
+      continue;
+    }
 
-    await _saveData();
+
+await db.collection('adler_archive').add({
+  "locationId": widget.locationId,
+  "locationName": widget.locationName,
+  "eventType": event,
+  "kingName": data['kingName'],
+  "shots": data['shots'],
+  "participants": data['participants'],
+  "results": data['results'],
+  "createdAt": DateTime.now().toIso8601String(),
+  "endedAt": DateTime.now().toIso8601String(),
+});
+
+await db
+    .collection('adler_events')
+    .doc(widget.locationId)
+    .collection('events')
+    .doc(event)
+    .set({
+  "archived": true,
+}, SetOptions(merge: true));
+
+
   }
+}
+
+//--------------------------------------------------
+// ✅ LIVE TICKER BEENDEN
+//--------------------------------------------------
+Future<void> _stopLiveTicker() async {
+  final db = FirebaseFirestore.instance;
+
+  final newsQuery = await db.collection('news')
+      .where('type', isEqualTo: 'liveEvent')
+      .where('location', isEqualTo: widget.locationName)
+      .where('isActive', isEqualTo: true)
+      .get();
+
+  for (var doc in newsQuery.docs) {
+    await doc.reference.update({
+      "isActive": false,
+      "updates": [],
+    });
+  }
+}
+//--------------------------------------------------
+// ✅ AUTO INAKTIV CHECK (NEU)
+//--------------------------------------------------
+Future<void> _checkInactivityAuto() async {
+  final db = FirebaseFirestore.instance;
+
+  for (var event in ["jung", "alt"]) {
+    final docRef = db
+        .collection('adler_events')
+        .doc(widget.locationId)
+        .collection('events')
+        .doc(event);
+
+    final doc = await docRef.get();
+    if (!doc.exists) continue;
+
+    final data = doc.data()!;
+    final lastUpdate = data['lastUpdate'];
+
+    if (lastUpdate == null) continue;
+
+    final last = (lastUpdate as Timestamp).toDate();
+    final diff = DateTime.now().difference(last);
+
+
+    //--------------------------------------------------
+    // ✅ 12h überschritten
+    //--------------------------------------------------
+if (diff.inHours >= 12) {
+
+  //--------------------------------------------------
+  // ✅ NUR ARCHIVIEREN wenn noch nicht passiert
+  //--------------------------------------------------
+  if (data['archived'] != true) {
+
+    if ((data['shots'] ?? 0) > 0 ||
+        (data['participants'] ?? []).isNotEmpty ||
+        (data['results'] ?? {}).isNotEmpty) {
+
+      await db.collection('adler_archive').add({
+        "locationId": widget.locationId,
+        "locationName": widget.locationName,
+        "eventType": event,
+        "kingName": data['kingName'],
+        "shots": data['shots'],
+        "participants": data['participants'],
+        "results": data['results'],
+        "createdAt": DateTime.now().toIso8601String(),
+        "endedAt": DateTime.now().toIso8601String(),
+      });
+    }
+  }
+
+
+
+  //--------------------------------------------------
+  // ✅ RESET IMMER
+  //--------------------------------------------------
+  await docRef.set({
+    "isActive": false,
+    "shots": 0,
+    "kingName": null,
+    "results": {},
+    "participants": [],
+    "eventType": event,
+    "lastUpdate": FieldValue.serverTimestamp(),
+    "archived": true, // bleibt gesetzt ✅
+  }, SetOptions(merge: false));
+
+
+}
+  }
+
+  //--------------------------------------------------
+  // ✅ HIER IST DER WICHTIGE TEIL (NUR EINMAL!)
+  //--------------------------------------------------
+  await _stopLiveTicker();
+
+  await db.collection('locations').doc(widget.locationId).set({
+    "isLive": false,
+  }, SetOptions(merge: true));
+}
+
+
+
+  //--------------------------------------------------
+Future<void> _resetGame() async {
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text("Reset?"),
+      content: const Text("Alles zurücksetzen und archivieren?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text("Abbrechen"),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text("OK"),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm != true) return;
+
+
+
+  //--------------------------------------------------
+  // ✅ 1. ARCHIVIEREN
+  //--------------------------------------------------
+  try {
+    await _archiveCurrentGame();
+    await _stopLiveTicker(); 
+    
+  } catch (e) {
+    debugPrint("Archiv Fehler: $e");
+  }
+
+
+
+  //--------------------------------------------------
+  // ✅ 2. RESET LOCAL STATE
+  //--------------------------------------------------
+  setState(() {
+    current['shots'] = 0;
+    current['kingName'] = null;
+    current['results'].clear();
+    current['players'].clear();
+  });
+
+  //--------------------------------------------------
+  // ✅ 3. FIREBASE UPDATE
+  //--------------------------------------------------
+  await _saveData();
+
+  //--------------------------------------------------
+  // ✅ FEEDBACK
+  //--------------------------------------------------
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("✅ Ergebnis archiviert")),
+  );
+}
+
 
   //--------------------------------------------------
   @override
@@ -241,6 +429,52 @@ return await db.collection('news').add({
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
+
+//--------------------------------------------------
+// ℹ️ INFO FÜR PROTOKOLLFÜHRER
+//--------------------------------------------------
+
+if (showInfo)
+  Container(
+    margin: const EdgeInsets.only(top: 8, bottom: 8),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.blue.shade50,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: Colors.blue.shade200),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.info_outline, color: Colors.blue),
+
+        const SizedBox(width: 8),
+
+        Expanded(
+          child: Text(
+            "Hinweis:\n"
+            "Nach 12 Stunden Inaktivität werden die Ergebnisse hier automatisch zurückgesetzt.\n\n"
+            "✅ Alle Daten bleiben im Archiv gespeichert (Siehe unter Bereich 'Orte')\n"
+            "📜 und sind jederzeit für jeden einsehbar.",
+            style: const TextStyle(fontSize: 11),
+          ),
+        ),
+
+        //--------------------------------------------------
+        // ❌ CLOSE BUTTON
+        //--------------------------------------------------
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              showInfo = false;
+            });
+          },
+          child: const Icon(Icons.close, size: 18, color: Colors.grey),
+        ),
+      ],
+    ),
+  ),
+
 
             //--------------------------------------------------
             // SWITCH

@@ -6,6 +6,8 @@ import 'news_screen.dart';
 import 'contact_screen.dart';
 import 'misc_screen.dart';
 import '../main.dart';
+import 'archiv_screen.dart';
+
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -108,7 +110,19 @@ void _openSupportDialog() {
               );
             },
           ),
-
+ListTile(
+  leading: const Icon(Icons.archive_outlined),
+  title: const Text("Archiv"),
+  onTap: () {
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ArchivScreen(),
+      ),
+    );
+  },
+),
           //--------------------------------------------------
           // 🌙 / ☀️ THEME SWITCH (FINAL)
           //--------------------------------------------------
