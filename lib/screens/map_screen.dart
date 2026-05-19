@@ -461,12 +461,22 @@ final url = Uri.parse(
 
               _loadMarkers();
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Filter zurückgesetzt"),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+
+final isDark = Theme.of(context).brightness == Brightness.dark;
+
+ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(
+    backgroundColor: isDark
+        ? Colors.grey.shade900
+        : Colors.grey.shade800,
+
+    behavior: SnackBarBehavior.floating, // ✅ wirkt moderner
+
+    content: const Text("Filter zurückgesetzt"),
+    duration: const Duration(seconds: 2),
+  ),
+);
+
             },
           ),
         ],

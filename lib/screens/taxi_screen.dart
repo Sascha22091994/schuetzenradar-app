@@ -31,13 +31,19 @@ class TaxiScreen extends StatelessWidget {
   //--------------------------------------------------
   // ✅ PREMIUM CALL DIALOG
   //--------------------------------------------------
-  Future<void> _confirmCall(BuildContext context, Taxi taxi) async {
-    final cleaned = taxi.phone.replaceAll(" ", "");
-    final uri = Uri.parse("tel:$cleaned");
+Future<void> _confirmCall(BuildContext context, Taxi taxi) async {
+  final cleaned = taxi.phone.replaceAll(" ", "");
+  final uri = Uri.parse("tel:$cleaned");
 
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
+  showDialog(
+    context: context,
+    builder: (_) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+
+      return Dialog(
+        backgroundColor: isDark
+            ? Colors.grey.shade900
+            : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -99,58 +105,67 @@ class TaxiScreen extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
+      );
+    }, // ✅ WICHTIG: builder schließen
+  );
+}
   //--------------------------------------------------
   // ✅ ALLE ORTE ANZEIGEN
   //--------------------------------------------------
-  void _showAllAreas(BuildContext context, Taxi taxi) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+  
+void _showAllAreas(BuildContext context, Taxi taxi) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
 
-            Text(
-              "${taxi.name} – Gebiet",
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+      return Container(
+        color: isDark ? Colors.grey.shade900 : Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+
+              Text(
+                "${taxi.name} – Gebiet",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
-            ),
 
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: taxi.areas.map((area) {
-                return Chip(
-                  label: Text(area),
-                  backgroundColor: Colors.grey.shade200,
-                );
-              }).toList(),
-            ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: taxi.areas.map((area) {
+                  return Chip(
+                    label: Text(area),
+                    backgroundColor: isDark
+                        ? Colors.grey.shade800
+                        : Colors.grey.shade200,
+                  );
+                }).toList(),
+              ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            TextButton(
-              child: const Text("Schließen"),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
+              TextButton(
+                child: const Text("Schließen"),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
+      );
+    },
+  );
+}
   //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
@@ -198,7 +213,12 @@ class TaxiScreen extends StatelessWidget {
               final visibleAreas = taxi.areas.take(3).toList();
               final extraCount = taxi.areas.length - visibleAreas.length;
 
-              return Card(
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+
+return Card(
+  color: isDark
+      ? Colors.grey.shade900
+      : Colors.white,
                 margin: const EdgeInsets.only(bottom: 10),
                 elevation: 1,
                 shape: RoundedRectangleBorder(
@@ -246,13 +266,17 @@ class TaxiScreen extends StatelessWidget {
 
                                   ...visibleAreas.map((area) => Chip(
                                         label: Text(area),
-                                        backgroundColor:
-                                            Colors.grey.shade200,
+                                        
+                              backgroundColor: isDark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade200,
+
                                         labelStyle: const TextStyle(fontSize: 12),
                                       )),
 
                                   if (extraCount > 0)
                                     GestureDetector(
+
                                       onTap: () =>
                                           _showAllAreas(context, taxi),
                                       child: Text(
@@ -285,7 +309,11 @@ class TaxiScreen extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.green.shade100,
+                              
+color: isDark
+    ? Colors.green.shade800
+    : Colors.green.shade100,
+
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(

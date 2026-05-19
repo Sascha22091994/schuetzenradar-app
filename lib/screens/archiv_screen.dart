@@ -9,6 +9,8 @@ class ArchivScreen extends StatelessWidget {
   //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
 
     return Scaffold(
       appBar: AppBar(
@@ -42,9 +44,15 @@ title: Text(
 }
 
 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-  return const Center(
-    child: Text("Noch keine archivierten Spiele vorhanden 🗂️"),
-  );
+return Center(
+  child: Text(
+    "Noch keine archivierten Spiele vorhanden 🗂️",
+    style: TextStyle(
+      color: isDark ? Colors.white70 : Colors.black87,
+    ),
+  ),
+);
+
 }
 
           
@@ -113,7 +121,10 @@ if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: isDark
+    ? Colors.grey.shade900
+    : Colors.grey.shade100,
+
                 borderRadius: BorderRadius.circular(12),
               ),
 
@@ -141,7 +152,12 @@ if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       child: Wrap(
                         spacing: 6,
                         children: participants
-                            .map((p) => Chip(label: Text(p)))
+                            .map((p) => Chip(
+  backgroundColor: isDark
+      ? Colors.grey.shade800
+      : Colors.grey.shade200,
+  label: Text(p),
+))
                             .toList(),
                       ),
                     ),
@@ -199,7 +215,10 @@ if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       child: Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.amber.shade200,
+                          color: isDark
+    ? Colors.amber.shade700
+    : Colors.amber.shade200,
+
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(

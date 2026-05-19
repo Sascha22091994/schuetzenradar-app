@@ -193,21 +193,46 @@ class _NewsScreenState extends State<NewsScreen> {
 
           final allDocs = snapshot.data!.docs;
 
-          final filteredDocs = allDocs.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            if (selectedFilter == "highlights") {
-  final isKingSet =
-      (data['kingName'] != null &&
-       data['kingName'].toString().isNotEmpty);
+        
 
-  return data['isImportant'] == true || isKingSet;
-}
+final filteredDocs = allDocs.where((doc) {
+  final data = doc.data() as Map<String, dynamic>;
 
-            if (selectedFilter == "live") {
-              return data['type'] == "liveEvent";
-            }
-            return true;
-          }).toList();
+  final isLiveEvent = data['type'] == 'liveEvent';
+  final isActive = data['isActive'] == true;
+
+  //--------------------------------------------------
+  // ✅ LIVE EVENTS NUR WENN AKTIV
+  //--------------------------------------------------
+  if (isLiveEvent && !isActive) {
+    return false;
+  }
+
+  //--------------------------------------------------
+  // 🔥 HIGHLIGHTS
+  //--------------------------------------------------
+  if (selectedFilter == "highlights") {
+    final isKingSet =
+        (data['kingName'] != null &&
+         data['kingName'].toString().isNotEmpty);
+
+    return data['isImportant'] == true || isKingSet;
+  }
+
+  //--------------------------------------------------
+  // ⚡ LIVE FILTER
+  //--------------------------------------------------
+  if (selectedFilter == "live") {
+    return isLiveEvent;
+  }
+
+  //--------------------------------------------------
+  // ✅ STANDARD
+  //--------------------------------------------------
+  return true;
+
+}).toList();
+
 
           return ListView(
             padding: const EdgeInsets.all(12),
@@ -435,12 +460,14 @@ FutureBuilder(
     final expanded = _expandedLiveEvents.contains(doc.id);
 
     final locationId =
-        (data['locationId'] ??
-         data['location'] ??
-         "")
+        (data['locationId'] ?? "")
         .toString()
-        .toLowerCase()
         .trim();
+        if (locationId.isEmpty) {
+  return const SizedBox();
+}
+
+        
 
     final isKingSet =
     (data['kingName'] ?? "").toString().isNotEmpty;

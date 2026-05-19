@@ -55,37 +55,40 @@ class _AdlerScreenState extends State<AdlerScreen> {
   //--------------------------------------------------
   // ✅ LIVE EVENT
   //--------------------------------------------------
-  Future<DocumentReference> _ensureLiveEvent() async {
-    final db = FirebaseFirestore.instance;
+Future<DocumentReference> _ensureLiveEvent() async {
+  final db = FirebaseFirestore.instance;
 
-    final query = await db.collection('news')
-        .where('type', isEqualTo: 'liveEvent')
-        .where('location', isEqualTo: widget.locationName)
-        .where('isActive', isEqualTo: true)
-        .limit(1)
-        .get();
+  final docRef = db
+      .collection('news')
+      .doc("live_${widget.locationId}"); // ✅ FIXE ID
 
-    if (query.docs.isNotEmpty) {
-  final ref = query.docs.first.reference;
+  final doc = await docRef.get();
 
-  // ✅ sicherstellen, dass eventType gesetzt ist
-  await ref.update({
+  if (doc.exists) {
+    await docRef.update({
+      "eventType": selectedEvent,
+      "locationId": widget.locationId,
+      "location": widget.locationName,
+      "isActive": true,
+    });
+
+    return docRef;
+  }
+
+  await docRef.set({
+    "title": "🦅 Adlerschießen LIVE",
+    "location": widget.locationName,
+    "locationId": widget.locationId,
+    "type": "liveEvent",
     "eventType": selectedEvent,
+    "updates": [],
+    "isActive": true,
+    "date": DateTime.now().toIso8601String(),
   });
 
-  return ref;
+  return docRef;
 }
 
-return await db.collection('news').add({
-  "title": "🦅 Adlerschießen LIVE",
-  "location": widget.locationName,
-  "type": "liveEvent",
-  "eventType": selectedEvent, // ✅ NEU!!
-  "updates": [],
-  "isActive": true,
-  "date": DateTime.now().toIso8601String(),
-});
-  }
 
   //--------------------------------------------------
   Future<void> _addLiveUpdate(String text) async {
@@ -204,29 +207,32 @@ await db
 }
 
 //--------------------------------------------------
-// ✅ LIVE TICKER BEENDEN
+// ✅ LIVE TICKER BEENDEN (FINAL)
 //--------------------------------------------------
 Future<void> _stopLiveTicker() async {
   final db = FirebaseFirestore.instance;
 
-  final newsQuery = await db.collection('news')
-      .where('type', isEqualTo: 'liveEvent')
-      .where('location', isEqualTo: widget.locationName)
-      .where('isActive', isEqualTo: true)
-      .get();
+  final docRef = db
+      .collection('news')
+      .doc("live_${widget.locationId}"); // ✅ FIXE ID
 
-  for (var doc in newsQuery.docs) {
-    await doc.reference.update({
-      "isActive": false,
-      "updates": [],
-    });
-  }
+  final doc = await docRef.get();
+
+  if (!doc.exists) return; // ✅ Sicherheitscheck
+
+  await docRef.update({
+    "isActive": false,
+    "updates": [],
+  });
 }
+
 //--------------------------------------------------
-// ✅ AUTO INAKTIV CHECK (NEU)
+// ✅ AUTO INAKTIV CHECK (FINAL)
 //--------------------------------------------------
 Future<void> _checkInactivityAuto() async {
   final db = FirebaseFirestore.instance;
+
+  bool somethingReset = false; // ✅ NEU
 
   for (var event in ["jung", "alt"]) {
     final docRef = db
@@ -246,63 +252,62 @@ Future<void> _checkInactivityAuto() async {
     final last = (lastUpdate as Timestamp).toDate();
     final diff = DateTime.now().difference(last);
 
-
     //--------------------------------------------------
     // ✅ 12h überschritten
     //--------------------------------------------------
-if (diff.inHours >= 12) {
+    if (diff.inHours >= 12) {
 
-  //--------------------------------------------------
-  // ✅ NUR ARCHIVIEREN wenn noch nicht passiert
-  //--------------------------------------------------
-  if (data['archived'] != true) {
+      somethingReset = true; // ✅ WICHTIG
 
-    if ((data['shots'] ?? 0) > 0 ||
-        (data['participants'] ?? []).isNotEmpty ||
-        (data['results'] ?? {}).isNotEmpty) {
+      //--------------------------------------------------
+      // ✅ ARCHIV (nur wenn noch nicht passiert)
+      //--------------------------------------------------
+      if (data['archived'] != true) {
 
-      await db.collection('adler_archive').add({
-        "locationId": widget.locationId,
-        "locationName": widget.locationName,
+        if ((data['shots'] ?? 0) > 0 ||
+            (data['participants'] ?? []).isNotEmpty ||
+            (data['results'] ?? {}).isNotEmpty) {
+
+          await db.collection('adler_archive').add({
+            "locationId": widget.locationId,
+            "locationName": widget.locationName,
+            "eventType": event,
+            "kingName": data['kingName'],
+            "shots": data['shots'],
+            "participants": data['participants'],
+            "results": data['results'],
+            "createdAt": DateTime.now().toIso8601String(),
+            "endedAt": DateTime.now().toIso8601String(),
+          });
+        }
+      }
+
+      //--------------------------------------------------
+      // ✅ RESET
+      //--------------------------------------------------
+      await docRef.set({
+        "isActive": false,
+        "shots": 0,
+        "kingName": null,
+        "results": {},
+        "participants": [],
         "eventType": event,
-        "kingName": data['kingName'],
-        "shots": data['shots'],
-        "participants": data['participants'],
-        "results": data['results'],
-        "createdAt": DateTime.now().toIso8601String(),
-        "endedAt": DateTime.now().toIso8601String(),
-      });
+        "lastUpdate": FieldValue.serverTimestamp(),
+        "archived": true,
+      }, SetOptions(merge: false));
     }
   }
 
-
-
   //--------------------------------------------------
-  // ✅ RESET IMMER
+  // ✅ NUR AUSFÜHREN WENN WIRKLICH RESET
   //--------------------------------------------------
-  await docRef.set({
-    "isActive": false,
-    "shots": 0,
-    "kingName": null,
-    "results": {},
-    "participants": [],
-    "eventType": event,
-    "lastUpdate": FieldValue.serverTimestamp(),
-    "archived": true, // bleibt gesetzt ✅
-  }, SetOptions(merge: false));
+  if (somethingReset) {
+    await _stopLiveTicker();
 
-
-}
+    await db.collection('locations').doc(widget.locationId).set({
+      "isLive": false,
+    }, SetOptions(merge: true));
   }
-
-  //--------------------------------------------------
-  // ✅ HIER IST DER WICHTIGE TEIL (NUR EINMAL!)
-  //--------------------------------------------------
-  await _stopLiveTicker();
-
-  await db.collection('locations').doc(widget.locationId).set({
-    "isLive": false,
-  }, SetOptions(merge: true));
 }
 
 
@@ -374,6 +379,8 @@ Future<void> _resetGame() async {
   @override
   Widget build(BuildContext context) {
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final shots = current['shots'];
     final players = List<String>.from(current['players']);
     final results = current['results'];
@@ -439,9 +446,17 @@ if (showInfo)
     margin: const EdgeInsets.only(top: 8, bottom: 8),
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: Colors.blue.shade50,
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: Colors.blue.shade200),
+      
+color: isDark
+    ? Colors.blue.shade900
+    : Colors.blue.shade50,
+
+border: Border.all(
+  color: isDark
+      ? Colors.blue.shade700
+      : Colors.blue.shade200,
+),
+
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -500,7 +515,10 @@ const SizedBox(height: 10),
                 margin: const EdgeInsets.symmetric(vertical: 10),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.amber.shade300,
+                  color: isDark
+    ? Colors.amber.shade700
+    : Colors.amber.shade300,
+
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -561,7 +579,9 @@ SizedBox(
             // SCHUSS COUNTER
             //--------------------------------------------------
   Card(
-  color: Colors.green.shade100,
+  color: isDark
+    ? Colors.green.shade900
+    : Colors.green.shade100,
   child: ListTile(
     title: Text(
       "Schüsse: $shots",
@@ -591,8 +611,12 @@ SizedBox(
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 6),
                     color: result != null
-                        ? Colors.green.shade50
-                        : Colors.grey.shade100,
+    ? (isDark
+        ? Colors.green.shade900
+        : Colors.green.shade50)
+    : (isDark
+        ? Colors.grey.shade800
+        : Colors.grey.shade100),
                     child: ListTile(
                       title: Text(
                         part,
@@ -663,25 +687,33 @@ SizedBox(
   }
 
   //--------------------------------------------------
-  Widget _eventButton(String label, String value) {
-    final active = selectedEvent == value;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => selectedEvent = value),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          color: active ? Colors.green : Colors.grey,
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                  color: active ? Colors.white : Colors.black),
+Widget _eventButton(String label, String value) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+
+  final active = selectedEvent == value;
+
+  return Expanded(
+    child: GestureDetector(
+      onTap: () => setState(() => selectedEvent = value),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        color: active
+            ? (isDark ? Colors.green.shade700 : Colors.green)
+            : (isDark ? Colors.grey.shade800 : Colors.grey.shade300),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: active
+                  ? Colors.white
+                  : (isDark ? Colors.white70 : Colors.black),
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   //--------------------------------------------------
   Future<void> _addPlayer() async {

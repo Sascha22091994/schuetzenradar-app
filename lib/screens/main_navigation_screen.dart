@@ -45,12 +45,15 @@ void _openSupportDialog() {
     builder: (_) => AlertDialog(
       title: const Text("💛 Unterstützen"),
       content: const Text(
-        "SchützenRadar ist ein privates Projekt ❤️\n\n"
-        "Ich stecke viel Zeit in die Entwicklung, "
-        "damit du kein Fest mehr verpasst.\n\n"
-        "Wenn dir die App gefällt, gib mir doch einfach "
-        "ein Bier aus 🍺\n\n"
-        "Vielen Dank für deinen Support 🙌",
+
+
+"SchützenRadar ist ein privates Projekt 🦅\n\n"
+"Wenn sie dir gefällt,\n"
+"freue ich mich über ein Bier 🍺\n\n"
+"oder teile die App gerne mit deinen Freunden 📱\n\n"
+"Danke für deinen Support 🙌"
+
+
       ),
       actions: [
         TextButton(
@@ -58,7 +61,7 @@ void _openSupportDialog() {
           onPressed: () => Navigator.pop(context),
         ),
         TextButton(
-          child: const Text("Website öffnen"),
+          child: const Text("Prost 🍺"),
           onPressed: () async {
             Navigator.pop(context);
 
@@ -88,8 +91,7 @@ void _openSupportDialog() {
   showModalBottomSheet(
     context: context,
     shape: const RoundedRectangleBorder(
-      borderRadius:
-          BorderRadius.vertical(top: Radius.circular(20)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
     builder: (_) => Padding(
       padding: const EdgeInsets.all(16),
@@ -97,34 +99,8 @@ void _openSupportDialog() {
         mainAxisSize: MainAxisSize.min,
         children: [
 
-          ListTile(
-            leading: const Icon(Icons.contact_mail_outlined),
-            title: const Text("Kontakt"),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ContactScreen(),
-                ),
-              );
-            },
-          ),
-ListTile(
-  leading: const Icon(Icons.archive_outlined),
-  title: const Text("Archiv"),
-  onTap: () {
-    Navigator.pop(context);
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ArchivScreen(),
-      ),
-    );
-  },
-),
           //--------------------------------------------------
-          // 🌙 / ☀️ THEME SWITCH (FINAL)
+          // 🌙 / ☀️ THEME SWITCH (OBEN)
           //--------------------------------------------------
           ListTile(
             leading: Icon(
@@ -140,6 +116,42 @@ ListTile(
             onTap: () {
               Navigator.pop(context);
               toggleTheme();
+            },
+          ),
+
+          const Divider(),
+
+          //--------------------------------------------------
+          // 📬 KONTAKT
+          //--------------------------------------------------
+          ListTile(
+            leading: const Icon(Icons.contact_mail_outlined),
+            title: const Text("Kontakt"),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ContactScreen(),
+                ),
+              );
+            },
+          ),
+
+          //--------------------------------------------------
+          // 🗂️ ARCHIV
+          //--------------------------------------------------
+          ListTile(
+            leading: const Icon(Icons.archive_outlined),
+            title: const Text("Archiv (Adlerschießen)"),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ArchivScreen(),
+                ),
+              );
             },
           ),
 

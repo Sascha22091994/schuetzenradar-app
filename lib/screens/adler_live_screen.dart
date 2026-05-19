@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 
 class AdlerLiveScreen extends StatefulWidget {
   final String locationId;
@@ -27,10 +28,31 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
   final Map<String, Map<String, dynamic>> _lastValidData = {};
 
+  Timer? _heartbeatTimer; // ✅ MUSS hier hin
+void _startHeartbeat() {
+  _heartbeatTimer?.cancel();
+
+  _heartbeatTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    if (viewerId == null) return;
+
+FirebaseFirestore.instance
+        .collection('adler_viewers')
+        .doc(widget.locationId)
+        .collection('users')
+        .doc(viewerId)
+        .update({
+      "lastSeen": FieldValue.serverTimestamp(),
+    }).catchError((e) {
+      _heartbeatTimer?.cancel(); // ✅ ganz wichtig
+    });
+
+  });
+}
+
   //--------------------------------------------------
   // ✅ AUTO RESET BEI 12H INAKTIVITÄT
   //--------------------------------------------------
-  Future<void> _checkInactivity() async {
+  /*Future<void> _checkInactivity() async {
     try {
       final db = FirebaseFirestore.instance;
 
@@ -76,7 +98,7 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
     } catch (e) {
       debugPrint("Inactivity Check Error: $e");
     }
-  }
+  }*/
 
   //--------------------------------------------------
   @override
@@ -92,86 +114,98 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    _checkInactivity();
+    //_checkInactivity();
     _registerViewer();
   }
 
   //--------------------------------------------------
-  @override
-  void dispose() {
-    _lastValidData.clear();
-    _removeViewer();
-    _pulseController.dispose();
-    super.dispose();
-  }
+@override
+void dispose() {
+  _heartbeatTimer?.cancel(); // ✅ NEU
+  _removeViewer();           // ✅ bleibt
+    _pulseController.dispose(); // ✅ WICHTIG
+  super.dispose();
+}
+
 
   //--------------------------------------------------
-  Future<void> _registerViewer() async {
-    try {
-      final db = FirebaseFirestore.instance;
+Future<void> _registerViewer() async {
+  try {
+    final db = FirebaseFirestore.instance;
 
-      final jungDoc = await db
-          .collection('adler_events')
-          .doc(widget.locationId)
-          .collection('events')
-          .doc('jung')
-          .get();
+    final jungDoc = await db
+        .collection('adler_events')
+        .doc(widget.locationId)
+        .collection('events')
+        .doc('jung')
+        .get();
 
-      final altDoc = await db
-          .collection('adler_events')
-          .doc(widget.locationId)
-          .collection('events')
-          .doc('alt')
-          .get();
+    final altDoc = await db
+        .collection('adler_events')
+        .doc(widget.locationId)
+        .collection('events')
+        .doc('alt')
+        .get();
 
-      final isActive =
-          (jungDoc.data()?['isActive'] == true) ||
-          (altDoc.data()?['isActive'] == true);
+    final isActive =
+        (jungDoc.data()?['isActive'] == true) ||
+        (altDoc.data()?['isActive'] == true);
 
-      if (!isActive) return;
+    if (!isActive) return;
 
-      final ref = db
-          .collection('adler_viewers')
-          .doc(widget.locationId)
-          .collection('users')
-          .doc();
+    final ref = db
+        .collection('adler_viewers')
+        .doc(widget.locationId)
+        .collection('users')
+        .doc();
 
-      viewerId = ref.id;
+    viewerId = ref.id;
 
-      final statsRef =
-          db.collection('adler_stats').doc(widget.locationId);
+    final statsRef =
+        db.collection('adler_stats').doc(widget.locationId);
 
-      await db.runTransaction((tx) async {
-        final snap = await tx.get(statsRef);
+    await db.runTransaction((tx) async {
+      final snap = await tx.get(statsRef);
 
-        int current = 0;
-        int peak = 0;
-        int total = 0;
+      int current = 0;
+      int peak = 0;
+      int total = 0;
 
-        if (snap.exists) {
-          final data = snap.data() as Map<String, dynamic>;
-          current = data['current'] ?? 0;
-          peak = data['peak'] ?? 0;
-          total = data['total'] ?? 0;
-        }
+      if (snap.exists) {
+        final data = snap.data() as Map<String, dynamic>;
+        current = data['current'] ?? 0;
+        peak = data['peak'] ?? 0;
+        total = data['total'] ?? 0;
+      }
 
-        current++;
-        total++;
-        if (current > peak) peak = current;
+      current++;
+      total++;
+      if (current > peak) peak = current;
 
-        tx.set(ref, {"joinedAt": FieldValue.serverTimestamp()});
-        tx.set(statsRef, {
-          "current": current,
-          "peak": peak,
-          "total": total,
-        }, SetOptions(merge: true));
+      //--------------------------------------------------
+      // ✅ WICHTIG: Viewer mit lastSeen speichern
+      //--------------------------------------------------
+      tx.set(ref, {
+        "joinedAt": FieldValue.serverTimestamp(),
+        "lastSeen": FieldValue.serverTimestamp(), // ✅ NEU
       });
 
-    } catch (e) {
-      debugPrint("RegisterViewer Error: $e");
-    }
-  }
+      tx.set(statsRef, {
+        "current": current,
+        "peak": peak,
+        "total": total,
+      }, SetOptions(merge: true));
+    });
 
+    //--------------------------------------------------
+    // ✅ HEARTBEAT starten (alle 10s)
+    //--------------------------------------------------
+    _startHeartbeat();
+
+  } catch (e) {
+    debugPrint("RegisterViewer Error: $e");
+  }
+}
   //--------------------------------------------------
   Future<void> _removeViewer() async {
     if (viewerId == null) return;
@@ -213,36 +247,90 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
   //--------------------------------------------------
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: Text("LIVE – ${widget.locationName}"),
-        backgroundColor: Colors.green,
-      ),
-      body: Column(
-        children: [
-          Row(
-            children: [
-              _modeButton("Jungkönig", "jung"),
-              _modeButton("Altkönig", "alt"),
-              _modeButton("Beide", "split"),
-            ],
-          ),
-          Expanded(
-            child: viewMode == "split"
-                ? Row(
-                    children: [
-                      Expanded(child: _buildSingleLive("jung")),
-                      Expanded(child: _buildSingleLive("alt")),
-                    ],
-                  )
-                : _buildSingleLive(viewMode),
-          ),
-        ],
-      ),
-    );
-  }
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Colors.black,
+    appBar: AppBar(
+      title: Text("LIVE – ${widget.locationName}"),
+      backgroundColor: Colors.green,
+    ),
+
+    body: Column(
+      children: [
+
+        //--------------------------------------------------
+        // 👀 VIEWER COUNT
+        //--------------------------------------------------
+        StreamBuilder(
+          stream: FirebaseFirestore.instance
+              .collection('adler_viewers')
+              .doc(widget.locationId)
+              .collection('users')
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const SizedBox();
+            }
+
+            final now = DateTime.now();
+
+            final activeViewers = snapshot.data!.docs.where((doc) {
+              final data = doc.data();
+              final lastSeen = data['lastSeen'];
+
+              if (lastSeen == null) return false;
+
+              final last = (lastSeen as Timestamp).toDate();
+
+              
+              return now.difference(last).inMinutes < 10;
+
+            }).length;
+
+            return Container(
+              padding: const EdgeInsets.all(10),
+              child: Text(
+                "👀 $activeViewers Zuschauer",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            );
+          },
+        ),
+
+        //--------------------------------------------------
+        // 🔘 BUTTONS
+        //--------------------------------------------------
+        Row(
+          children: [
+            _modeButton("Jungkönig", "jung"),
+            _modeButton("Altkönig", "alt"),
+            _modeButton("Beide", "split"),
+          ],
+        ),
+
+        //--------------------------------------------------
+        // 📺 LIVE CONTENT
+        //--------------------------------------------------
+        Expanded(
+          child: viewMode == "split"
+              ? Row(
+                  children: [
+                    Expanded(child: _buildSingleLive("jung")),
+                    Expanded(child: _buildSingleLive("alt")),
+                  ],
+                )
+              : _buildSingleLive(viewMode),
+        ),
+
+      ],
+    ),
+  );
+}
+      
 
   //--------------------------------------------------
   Widget _modeButton(String label, String value) {

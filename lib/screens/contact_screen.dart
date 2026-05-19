@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../services/email_service.dart';
 import 'legal_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ContactScreen extends StatelessWidget {
   const ContactScreen({super.key});
@@ -31,6 +32,11 @@ class ContactScreen extends StatelessWidget {
   }
 */
   //--------------------------------------------------
+Future<void> _openInstagram() async {
+  final uri = Uri.parse("https://www.instagram.com/schuetzenradar/");
+  await launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -143,7 +149,16 @@ class ContactScreen extends StatelessWidget {
             ),
           ),
 
+const SizedBox(height: 12),
 
+ElevatedButton.icon(
+  onPressed: _openInstagram,
+  icon: const Icon(Icons.camera_alt),
+  label: const Text("Instagram besuchen"),
+  style: ElevatedButton.styleFrom(
+    padding: const EdgeInsets.symmetric(vertical: 14),
+  ),
+),
 
           //--------------------------------------------------
           // ✅ ANIMIERTER BUTTON

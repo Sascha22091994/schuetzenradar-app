@@ -10,7 +10,7 @@ import GoogleMaps // ✅ NEU!
   ) -> Bool {
 
     // ✅ GOOGLE MAPS API KEY
-    GMSServices.provideAPIKey("AIzaSyDZ4v6hARmTxNtbnED1EfxRBUmA47rdNr8")
+    GMSServices.provideAPIKey("AIzaSyDusgDvZyYQSI0Ay32ZyqfmfhmslFqxkZI")
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
