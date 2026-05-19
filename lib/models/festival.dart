@@ -11,6 +11,7 @@ class Festival {
   final Map<String, String> musicDays;
 
   final String flyerUrl;
+  final List<String> images;
 
   //--------------------------------------------------
   // ✅ LOCATION
@@ -36,6 +37,7 @@ class Festival {
     required this.outfitHint,
     required this.highlights,
     required this.website,
+    required this.images,
   });
 
   //--------------------------------------------------
@@ -63,6 +65,13 @@ class Festival {
           : {},
 
       flyerUrl: data['flyerUrl'] ?? '',
+      
+      images: data['images'] != null
+    ? List<String>.from(data['images'])
+    : (data['flyerUrl'] != null && data['flyerUrl'] != ''
+        ? [data['flyerUrl']]
+        : []),
+
 
       //--------------------------------------------------
       // ✅ ROBUSTER LAT/LNG FIX

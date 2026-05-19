@@ -75,67 +75,66 @@ void _shareEvent(BuildContext context) {
         padding: const EdgeInsets.all(16),
         children: [
 
-          //--------------------------------------------------
-          // ✅ HEADER (FINAL)
-          //--------------------------------------------------
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.green.shade700,
-                  Colors.green.shade500,
-                ],
+//--------------------------------------------------
+// ✅ HEADER (FINAL)
+//--------------------------------------------------
+Container(
+  padding: const EdgeInsets.all(18),
+  decoration: BoxDecoration(
+    gradient: LinearGradient(
+      colors: [
+        Colors.green.shade700,
+        Colors.green.shade500,
+      ],
+    ),
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.15),
+        blurRadius: 10,
+        offset: const Offset(0, 4),
+      )
+    ],
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              festival.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-
-                Row(
-                  children: [
-
-                    Expanded(
-                      child: Text(
-                        festival.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 6),
-
-                Row(
-                  children: [
-                    const Icon(Icons.location_on,
-                        color: Colors.white70, size: 16),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        festival.address,
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
             ),
           ),
+        ],
+      ),
 
-          const SizedBox(height: 20),
+      const SizedBox(height: 6),
+
+      Row(
+        children: [
+          const Icon(Icons.location_on,
+              color: Colors.white70, size: 16),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              festival.address,
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ),
+        ],
+      ),
+    ],
+  ),
+),
+
+   
 
           //--------------------------------------------------
           // ✅ DATEN CARD
@@ -283,59 +282,145 @@ void _shareEvent(BuildContext context) {
 
           const SizedBox(height: 20),
 
-          //--------------------------------------------------
-          // ✅ FLYER (ZOOMBAR)
-          //--------------------------------------------------
-          if (festival.flyerUrl.isNotEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+ //--------------------------------------------------
+// ✅ FLYER
+//--------------------------------------------------
+if (festival.flyerUrl.isNotEmpty)
+  Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
 
-                const Text(
-                  "📄 Flyer & Infos",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+      const Text(
+        "📄 Flyer & Infos",
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+
+      const SizedBox(height: 10),
+
+      GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (_) => Dialog(
+              backgroundColor: Colors.black,
+              child: InteractiveViewer(
+                child: Image.network(
+                  festival.flyerUrl,
+                  fit: BoxFit.contain,
                 ),
+              ),
+            ),
+          );
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.network(
+            festival.flyerUrl,
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
 
-                const SizedBox(height: 10),
+      const SizedBox(height: 20),
+    ],
+  ),
 
-                GestureDetector(
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => Dialog(
-                        backgroundColor: Colors.black,
-                        child: InteractiveViewer(
-                          child: Image.network(
-                            festival.flyerUrl,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+//--------------------------------------------------
+// ✅ WEITERE BILDER (SLIDER)
+//--------------------------------------------------
+if (festival.images.isNotEmpty) ...[
+  const Text(
+    "📸 Informationen",
+    style: TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: 16,
+    ),
+  ),
 
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.network(
-                      festival.flyerUrl,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return const SizedBox(
-                          height: 200,
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      },
+  const SizedBox(height: 10),
+
+  Column(
+    children: [
+
+      //--------------------------------------------------
+      // ✅ SLIDER
+      //--------------------------------------------------
+      SizedBox(
+        height: 200,
+        child: PageView.builder(
+          itemCount: festival.images.length,
+          itemBuilder: (context, index) {
+            final url = festival.images[index];
+
+            return GestureDetector(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => Dialog(
+                    backgroundColor: Colors.black,
+                    child: InteractiveViewer(
+                      child: Image.network(url),
                     ),
                   ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                  ),
                 ),
+              ),
+            );
+          },
+        ),
+      ),
 
-                const SizedBox(height: 20),
-              ],
+      const SizedBox(height: 8),
+
+      //--------------------------------------------------
+      // ✅ DOT INDICATOR (zeigt Slider!)
+      //--------------------------------------------------
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(
+          festival.images.length,
+          (index) => Container(
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: Colors.grey,
+              shape: BoxShape.circle,
             ),
+          ),
+        ),
+      ),
+
+      const SizedBox(height: 6),
+
+      //--------------------------------------------------
+      // ✅ HINWEIS
+      //--------------------------------------------------
+      const Text(
+        "← wischen →",
+        style: TextStyle(
+          fontSize: 12,
+          color: Colors.grey,
+        ),
+      ),
+    ],
+  ),
+
+  const SizedBox(height: 20),
+],
 
           //--------------------------------------------------
           // ✅ PRIMARY CTA
