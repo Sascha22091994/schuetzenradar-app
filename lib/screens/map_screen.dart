@@ -287,20 +287,6 @@ final url = Uri.parse(
     });
   }
 
-  Set<Circle> _buildCircles() {
-    if (_userPosition == null) return {};
-
-    return {
-      Circle(
-        circleId: const CircleId("radius"),
-        center: LatLng(_userPosition!.latitude, _userPosition!.longitude),
-        radius: 10000,
-        fillColor: Colors.green.withValues(alpha: 0.15),
-        strokeColor: Colors.green,
-        strokeWidth: 2,
-      ),
-    };
-  }
 
   Widget _buildMapContent() {
     if (_isLoading) {

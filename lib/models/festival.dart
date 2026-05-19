@@ -22,6 +22,8 @@ class Festival {
   final String outfitHint;
   final String highlights;
   final String website;
+  final String description;
+
 
   Festival({
     required this.id,
@@ -38,6 +40,8 @@ class Festival {
     required this.highlights,
     required this.website,
     required this.images,
+    required this.description,
+
   });
 
   //--------------------------------------------------
@@ -71,6 +75,7 @@ class Festival {
     : (data['flyerUrl'] != null && data['flyerUrl'] != ''
         ? [data['flyerUrl']]
         : []),
+        description: data['description'] ?? '',
 
 
       //--------------------------------------------------

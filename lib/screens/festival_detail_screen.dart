@@ -206,6 +206,71 @@ Container(
           const SizedBox(height: 16),
 
           //--------------------------------------------------
+// ✅ HIGHLIGHTS
+//--------------------------------------------------
+if (festival.highlights.isNotEmpty)
+  Card(
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          const Text(
+            "🔥 Highlights",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Text(festival.highlights),
+        ],
+      ),
+    ),
+  ),
+
+const SizedBox(height: 16),
+
+//--------------------------------------------------
+// ✅ BESCHREIBUNG
+//--------------------------------------------------
+if (festival.description.isNotEmpty)
+  Card(
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          const Text(
+            "ℹ️ Beschreibung",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Text(festival.description),
+        ],
+      ),
+    ),
+  ),
+
+const SizedBox(height: 16),
+
+
+          //--------------------------------------------------
           // ✅ ORT BUTTON (FINAL)
           //--------------------------------------------------
           FutureBuilder<DocumentSnapshot>(
