@@ -12,21 +12,26 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
 
   @override
-  void initState() {
-    super.initState();
+void initState() {
+  super.initState();
 
-    //--------------------------------------------------
-    // 🔄 LOADING DELAY
-    //--------------------------------------------------
-    Timer(const Duration(seconds: 2), () {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const MainNavigationScreen(),
-        ),
-      );
-    });
-  }
+  _navigate();
+}
+
+//--------------------------------------------------
+Future<void> _navigate() async {
+  await Future.delayed(const Duration(seconds: 2));
+
+  if (!mounted) return;
+
+  Navigator.of(context).pushReplacement(
+    MaterialPageRoute(
+      builder: (_) => const MainNavigationScreen(),
+    ),
+  );
+}
+
+  
 
   //--------------------------------------------------
   // BUILD
