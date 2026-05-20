@@ -601,61 +601,100 @@ color: isActive
 
 
 
-      //--------------------------------------------------
-      // ✅ NORMALE NEWS
-      //--------------------------------------------------
-      final news = NewsItem.fromMap(data);
-      final important = data['isImportant'] == true;
+//--------------------------------------------------
+// ✅ NORMALE NEWS
+//--------------------------------------------------
 
-      return Card(
-        color: important ? Colors.amber.shade50 : null,
-        child: ListTile(
-          title: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  news.title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+final news = NewsItem.fromMap(data);
+final important = data['isImportant'] == true;
+
+
+return Card(
+  margin: const EdgeInsets.only(bottom: 12),
+  elevation: 2,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(14),
+    side: BorderSide(
+      color: Colors.black.withOpacity(0.08),
+      width: 1,
+    ),
+  ),
+  color: Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFF242424)
+      : Colors.white,
+
+
+  child: Padding(
+    padding: const EdgeInsets.all(14),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        //--------------------------------------------------
+        // ✅ TITEL + DATUM
+        //--------------------------------------------------
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                news.title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
               ),
-              if ((data['location'] ?? '').toString().isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    data['location'],
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _formatDate(news.date),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(news.text),
-              ],
+            ),
+
+            const SizedBox(width: 8),
+
+            Text(
+              _formatDate(news.date),
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 8),
+
+        //--------------------------------------------------
+        // ✅ ORT
+        //--------------------------------------------------
+        if ((data['location'] ?? '').toString().isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              data['location'],
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.green,
+              ),
             ),
           ),
-        ),
-      );
 
+        //--------------------------------------------------
+        // ✅ TEXT
+        //--------------------------------------------------
+        Text(
+          news.text,
+          style: const TextStyle(
+            height: 1.4,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    ),
+  ),
+);
 
     }).toList(),
 

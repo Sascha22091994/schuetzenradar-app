@@ -5,7 +5,6 @@ import '../models/festival.dart';
 import '../models/month_filter.dart';
 import '../widgets/festival_card.dart';
 import '../services/favorite_service.dart';
-import '../services/admin_service.dart';
 import '../screens/taxi_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import '../screens/map_screen.dart';
@@ -166,12 +165,15 @@ double? _distanceInKm(Festival f) {
       list = list.where((f) => !_isPast(f)).toList();
     }
 
+    
+
   // ✅ GEO FILTER zuerst
 if (_userPosition != null) {
   list = list.where(_isWithinRadius).toList();
 }
 
-if (_sortMode == SortMode.distance && _userPosition != null) {
+if (_sortMode == SortMode.distance && _userPosition != null){
+
   list.sort((a, b) {
     final distA = _distanceInKm(a) ?? 999999;
     final distB = _distanceInKm(b) ?? 999999;
@@ -209,6 +211,12 @@ if (_sortMode == SortMode.distance && _userPosition != null) {
 
         final filtered = _applyFilter(festivals);
 
+final activeFestivals =
+    filtered.where((f) => !_isPast(f)).toList();
+
+final pastFestivals =
+    festivals.where((f) => _isPast(f)).toList();
+
         return Scaffold(
           appBar: AppBar(
   elevation: 0,
@@ -243,17 +251,32 @@ if (_sortMode == SortMode.distance && _userPosition != null) {
   ),
 ),
 
+// FEST MELDEN BUTTON
+// FEST MELDEN BUTTON
+floatingActionButton: FloatingActionButton.extended(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SubmitFestivalScreen(),
+      ),
+    );
+  },
+  icon: const Icon(Icons.add),
+  label: const Text("Fest hinzufügen"),
+),
           //--------------------------------------------------
           // ADMIN FAB (BLEIBT!)
           //--------------------------------------------------
      
 
-          body: Column(
-            children: [
+// NUR DER BODY TEIL IST GEÄNDERT – Rest bleibt gleich
 
+body: Column(
+  children: [
 
     //--------------------------------------------------
-    // 🔍 SEARCH (BLEIBT OBEN)
+    // 🔍 SEARCH + FILTER DROPDOWN
     //--------------------------------------------------
     Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
@@ -263,6 +286,58 @@ if (_sortMode == SortMode.distance && _userPosition != null) {
         decoration: InputDecoration(
           hintText: 'Fest oder Ort suchen...',
           prefixIcon: const Icon(Icons.search),
+
+          suffixIcon: PopupMenuButton<String>(
+            icon: const Icon(Icons.tune),
+
+            onSelected: (value) {
+              setState(() {
+                if (value == "date") _sortMode = SortMode.date;
+                if (value == "distance") _sortMode = SortMode.distance;
+                if (value == "radius10") _radiusKm = 10;
+                if (value == "radius25") _radiusKm = 25;
+                if (value == "radius50") _radiusKm = 50;
+              });
+            },
+
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                enabled: false,
+                child: Text("Sortierung"),
+              ),
+              CheckedPopupMenuItem(
+                value: "date",
+                checked: _sortMode == SortMode.date,
+                child: const Text("Datum"),
+              ),
+              CheckedPopupMenuItem(
+                value: "distance",
+                checked: _sortMode == SortMode.distance,
+                child: const Text("Entfernung"),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                enabled: false,
+                child: Text("Umkreis"),
+              ),
+              CheckedPopupMenuItem(
+                value: "radius10",
+                checked: _radiusKm == 10,
+                child: const Text("10 km"),
+              ),
+              CheckedPopupMenuItem(
+                value: "radius25",
+                checked: _radiusKm == 25,
+                child: const Text("25 km"),
+              ),
+              CheckedPopupMenuItem(
+                value: "radius50",
+                checked: _radiusKm == 50,
+                child: const Text("50 km"),
+              ),
+            ],
+          ),
+
           filled: true,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -273,7 +348,7 @@ if (_sortMode == SortMode.distance && _userPosition != null) {
     ),
 
     //--------------------------------------------------
-    // ✅ FILTER (KOMPAKT)
+    // ✅ MONATSFILTER (BLEIBT)
     //--------------------------------------------------
     SizedBox(
       height: 42,
@@ -288,101 +363,30 @@ if (_sortMode == SortMode.distance && _userPosition != null) {
           _btn('Juni', MonthFilter.june),
           _btn('Juli', MonthFilter.july),
           _btn('August', MonthFilter.august),
+
+          
         ],
       ),
+      
     ),
+    
 
-    const SizedBox(height: 6),
-
-
+    const SizedBox(height: 8),
 
 //--------------------------------------------------
-// ✅ HEADER: FILTER + ACTION BUTTONS (FINAL)
+// 🚕 ACTION BUTTONS (SCHLANK & CLEAN)
 //--------------------------------------------------
 Padding(
   padding: const EdgeInsets.symmetric(horizontal: 12),
   child: Row(
-    crossAxisAlignment: CrossAxisAlignment.center,
     children: [
 
       //--------------------------------------------------
-      // 🔽 FILTER (UNVERÄNDERT DROPDOWN)
-      //--------------------------------------------------
-      Expanded(
-        flex: 2,
-        child: Card(
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: ExpansionTile(
-            tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-            title: const Text(
-              "Suchfilter",
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            childrenPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            children: [
-
-              //--------------------------------------
-              // SORTIERUNG
-              //--------------------------------------
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  ChoiceChip(
-                    label: const Text("📅 Datum"),
-                    selected: _sortMode == SortMode.date,
-                    onSelected: (_) {
-                      setState(() => _sortMode = SortMode.date);
-                    },
-                  ),
-                  ChoiceChip(
-                    label: const Text("📍 Entfernung"),
-                    selected: _sortMode == SortMode.distance,
-                    onSelected: (_) {
-                      setState(() => _sortMode = SortMode.distance);
-                    },
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 10),
-
-              //--------------------------------------
-              // RADIUS
-              //--------------------------------------
-              if (_userPosition != null)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Umkreis: ${_radiusKm.round()} km"),
-                    Slider(
-                      value: _radiusKm,
-                      min: 5,
-                      max: 100,
-                      divisions: 19,
-                      onChanged: (value) {
-                        setState(() => _radiusKm = value);
-                      },
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ),
-
-      const SizedBox(width: 8),
-
-      //--------------------------------------------------
-      // 🚕 TAXI BUTTON
+      // 🚕 TAXI
       //--------------------------------------------------
       Expanded(
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           onTap: () {
             Navigator.push(
               context,
@@ -392,20 +396,24 @@ Padding(
             );
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.yellow.shade300,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: const Column(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.local_taxi,
-                    color: Colors.amber, size: 22),
-                SizedBox(height: 4),
+                    size: 18, color: Colors.black87),
+                SizedBox(width: 6),
                 Text(
-                  "Taxi",
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  "Taxi finden",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Colors.black87,
+                  ),
                 ),
               ],
             ),
@@ -413,14 +421,14 @@ Padding(
         ),
       ),
 
-      const SizedBox(width: 6),
+      const SizedBox(width: 8),
 
       //--------------------------------------------------
-      // 🗺 KARTE BUTTON
+      // 🗺 KARTE
       //--------------------------------------------------
       Expanded(
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           onTap: () {
             Navigator.push(
               context,
@@ -430,20 +438,23 @@ Padding(
             );
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.blue.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.blue.shade400,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: const Column(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.map,
-                    color: Colors.blue, size: 22),
-                SizedBox(height: 4),
+                Icon(Icons.map, size: 18, color: Colors.white),
+                SizedBox(width: 6),
                 Text(
-                  "Karte",
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  "Karte öffnen",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
                 ),
               ],
             ),
@@ -454,169 +465,107 @@ Padding(
   ),
 ),
 
-
-
-
-
     //--------------------------------------------------
-    // ✅ HIER IST DER GAMECHANGER
+    // ✅ LISTE
     //--------------------------------------------------
     Expanded(
       child: ListView(
         children: [
 
+          
           //--------------------------------------------------
-          // ✅ FEST MELDEN (JETZT ÜBER LISTE!)
+          // TRENNER
           //--------------------------------------------------
           Container(
-            margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+            height: 6,
             decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.green.shade300),
-            ),
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const SubmitFestivalScreen(),
-                  ),
-                );
-              },
-              child: const Center(
-                child: Text(
-                  "🎉 Fehlt ein Fest? Dann klicke hier🎉",
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.green.shade300,
+                  Colors.green.shade600,
+                ],
               ),
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
 
 //--------------------------------------------------
-// ✅ DICKER TRENNER
+// AKTUELLE FESTE
 //--------------------------------------------------
-Container(
-  margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-  height: 6,
-  decoration: BoxDecoration(
-    gradient: LinearGradient(
-      colors: [
-        Colors.green.shade300,
-        Colors.green.shade600,
-      ],
-    ),
-    borderRadius: BorderRadius.circular(8),
-  ),
-),
-
-          //--------------------------------------------------
-          // FESTIVAL LISTE
-          //--------------------------------------------------
-      ...filtered.map((f) {
-
+...activeFestivals.map((f) {
   final distance = _distanceInKm(f);
 
-  return Dismissible(
-    key: Key(f.id),
-
-    //--------------------------------------------------
-    // ✅ NUR ADMIN DARF LÖSCHEN
-    //--------------------------------------------------
-    direction: AdminService.isAdmin
-        ? DismissDirection.endToStart
-        : DismissDirection.none,
-
-    //--------------------------------------------------
-    // ✅ BESTÄTIGUNG
-    //--------------------------------------------------
-    confirmDismiss: (_) async {
-      return await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text("Löschen?"),
-          content: const Text("Bist du sicher?"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text("Abbrechen"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text("Löschen"),
-            ),
-          ],
-        ),
-      );
-    },
-
-    //--------------------------------------------------
-    // ✅ LÖSCHEN
-    //--------------------------------------------------
-    onDismissed: (_) async {
-      await FirebaseFirestore.instance
-          .collection('festivals')
-          .doc(f.id)
-          .delete();
-    },
-
-    //--------------------------------------------------
-    // ✅ SWIPE UI
-    //--------------------------------------------------
-    background: Container(
-      color: Colors.red,
-      alignment: Alignment.centerRight,
-      padding: const EdgeInsets.only(right: 20),
-      child: const Icon(Icons.delete, color: Colors.white),
-    ),
-
-    //--------------------------------------------------
-    // ✅ CONTENT
-    //--------------------------------------------------
-    child: GestureDetector(
-      onLongPress: () {
-        if (AdminService.isAdmin) {
-          _showEditFestivalDialog(f);
-        }
-      },
-
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-
-          FestivalCard(
-            festival: f,
-            onFavoriteChanged: () {
-              setState(() {});
-            },
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      FestivalCard(
+        festival: f,
+        onFavoriteChanged: () {
+          setState(() {});
+        },
+      ),
+      if (distance != null)
+        Padding(
+          padding: const EdgeInsets.only(left: 16, bottom: 8),
+          child: Text(
+            "📍 ${distance.toStringAsFixed(1)} km entfernt",
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
           ),
+        ),
+    ],
+  );
+}).toList(),
 
-          if (distance != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 8),
-              child: Text(
-                "📍 ${distance.toStringAsFixed(1)} km entfernt",
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
+//--------------------------------------------------
+// VERGANGENE FESTE
+//--------------------------------------------------
+if (pastFestivals.isNotEmpty) ...[
+
+  const Padding(
+    padding: EdgeInsets.fromLTRB(12, 16, 12, 8),
+    child: Text(
+      "Vergangene Feste",
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  ),
+
+  ...pastFestivals.take(5).map((f) {
+    return FestivalCard(
+  festival: f,
+  onFavoriteChanged: () {
+    setState(() {});
+  },
+
+    );
+  }).toList(),
+
+  //--------------------------------------------------
+  // BUTTON → ALLE VERGANGENEN
+  //--------------------------------------------------
+  Center(
+    child: TextButton(
+      onPressed: () {
+        setState(() {
+          _filter = MonthFilter.past;
+        });
+      },
+      child: const Text("Alle vergangenen anzeigen"),
+    ),
+  ),
+],
+
+
+
         ],
       ),
     ),
-  );
+  ],
+),
 
-}).toList(),
-
-        ],
-      ), // ✅ ListView
-
-    ), // ✅ Expanded
-
-  ], // ✅ Column children
-), // ✅ Column
 
 ); // ✅ Scaffold
 },
@@ -653,5 +602,5 @@ Container(
   //--------------------------------------------------
 
 
- void _showEditFestivalDialog(Festival f) {}
+ //void _showEditFestivalDialog(Festival f) {}
 }
