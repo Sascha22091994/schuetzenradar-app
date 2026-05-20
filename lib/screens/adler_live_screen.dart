@@ -28,77 +28,26 @@ class _AdlerLiveScreenState extends State<AdlerLiveScreen>
 
   final Map<String, Map<String, dynamic>> _lastValidData = {};
 
-  Timer? _heartbeatTimer; // ✅ MUSS hier hin
-void _startHeartbeat() {
-  _heartbeatTimer?.cancel();
+  Timer? _heartbeatTimer;
 
-  _heartbeatTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-    if (viewerId == null) return;
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
 
-FirebaseFirestore.instance
-        .collection('adler_viewers')
-        .doc(widget.locationId)
-        .collection('users')
-        .doc(viewerId)
-        .update({
-      "lastSeen": FieldValue.serverTimestamp(),
-    }).catchError((e) {
-      _heartbeatTimer?.cancel(); // ✅ ganz wichtig
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (viewerId == null) return;
+
+      FirebaseFirestore.instance
+          .collection('adler_viewers')
+          .doc(widget.locationId)
+          .collection('users')
+          .doc(viewerId)
+          .update({
+        "lastSeen": FieldValue.serverTimestamp(),
+      }).catchError((e) {
+        _heartbeatTimer?.cancel();
+      });
     });
-
-  });
-}
-
-  //--------------------------------------------------
-  // ✅ AUTO RESET BEI 12H INAKTIVITÄT
-  //--------------------------------------------------
-  /*Future<void> _checkInactivity() async {
-    try {
-      final db = FirebaseFirestore.instance;
-
-      for (final eventType in ["jung", "alt"]) {
-        final doc = await db
-            .collection('adler_events')
-            .doc(widget.locationId)
-            .collection('events')
-            .doc(eventType)
-            .get();
-
-        if (!doc.exists) continue;
-
-        final data = doc.data()!;
-        final lastUpdate = data['lastUpdate'];
-        if (lastUpdate == null) continue;
-
-        final last = (lastUpdate as Timestamp).toDate();
-        final diff = DateTime.now().difference(last);
-
-        if (diff.inHours >= 12) {
-          await db
-              .collection('adler_events')
-              .doc(widget.locationId)
-              .collection('events')
-              .doc(eventType)
-              .set({
-            "isActive": false,
-            "shots": 0,
-            "kingName": null,
-            "results": {},
-            "participants": [],
-            "eventType": eventType,
-            "lastUpdate": FieldValue.serverTimestamp(),
-          }, SetOptions(merge: false));
-        }
-      }
-
-      await db.collection('locations').doc(widget.locationId).set({
-        "isLive": false,
-      }, SetOptions(merge: true));
-
-    } catch (e) {
-      debugPrint("Inactivity Check Error: $e");
-    }
-  }*/
+  }
 
   //--------------------------------------------------
   @override
@@ -114,98 +63,91 @@ FirebaseFirestore.instance
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    //_checkInactivity();
     _registerViewer();
   }
 
   //--------------------------------------------------
-@override
-void dispose() {
-  _heartbeatTimer?.cancel(); // ✅ NEU
-  _removeViewer();           // ✅ bleibt
-    _pulseController.dispose(); // ✅ WICHTIG
-  super.dispose();
-}
-
+  @override
+  void dispose() {
+    _heartbeatTimer?.cancel();
+    _removeViewer();
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   //--------------------------------------------------
-Future<void> _registerViewer() async {
-  try {
-    final db = FirebaseFirestore.instance;
+  Future<void> _registerViewer() async {
+    try {
+      final db = FirebaseFirestore.instance;
 
-    final jungDoc = await db
-        .collection('adler_events')
-        .doc(widget.locationId)
-        .collection('events')
-        .doc('jung')
-        .get();
+      final jungDoc = await db
+          .collection('adler_events')
+          .doc(widget.locationId)
+          .collection('events')
+          .doc('jung')
+          .get();
 
-    final altDoc = await db
-        .collection('adler_events')
-        .doc(widget.locationId)
-        .collection('events')
-        .doc('alt')
-        .get();
+      final altDoc = await db
+          .collection('adler_events')
+          .doc(widget.locationId)
+          .collection('events')
+          .doc('alt')
+          .get();
 
-    final isActive =
-        (jungDoc.data()?['isActive'] == true) ||
-        (altDoc.data()?['isActive'] == true);
+      final isActive =
+          (jungDoc.data()?['isActive'] == true) ||
+          (altDoc.data()?['isActive'] == true);
 
-    if (!isActive) return;
+      if (!isActive) return;
 
-    final ref = db
-        .collection('adler_viewers')
-        .doc(widget.locationId)
-        .collection('users')
-        .doc();
+      final ref = db
+          .collection('adler_viewers')
+          .doc(widget.locationId)
+          .collection('users')
+          .doc();
 
-    viewerId = ref.id;
+      viewerId = ref.id;
 
-    final statsRef =
-        db.collection('adler_stats').doc(widget.locationId);
+      final statsRef =
+          db.collection('adler_stats').doc(widget.locationId);
 
-    await db.runTransaction((tx) async {
-      final snap = await tx.get(statsRef);
+      await db.runTransaction((tx) async {
+        final snap = await tx.get(statsRef);
 
-      int current = 0;
-      int peak = 0;
-      int total = 0;
+        int current = 0;
+        int peak = 0;
+        int total = 0;
 
-      if (snap.exists) {
-        final data = snap.data() as Map<String, dynamic>;
-        current = data['current'] ?? 0;
-        peak = data['peak'] ?? 0;
-        total = data['total'] ?? 0;
-      }
+        if (snap.exists) {
+          final data = snap.data() as Map<String, dynamic>;
+          current = data['current'] ?? 0;
+          peak = data['peak'] ?? 0;
+          total = data['total'] ?? 0;
+        }
 
-      current++;
-      total++;
-      if (current > peak) peak = current;
+        current++;
+        total++;
+        if (current > peak) peak = current;
 
-      //--------------------------------------------------
-      // ✅ WICHTIG: Viewer mit lastSeen speichern
-      //--------------------------------------------------
-      tx.set(ref, {
-        "joinedAt": FieldValue.serverTimestamp(),
-        "lastSeen": FieldValue.serverTimestamp(), // ✅ NEU
+        tx.set(ref, {
+          "joinedAt": FieldValue.serverTimestamp(),
+          "lastSeen": FieldValue.serverTimestamp(),
+        });
+
+        tx.set(statsRef, {
+          "current": current,
+          "peak": peak,
+          "total": total,
+        }, SetOptions(merge: true));
       });
 
-      tx.set(statsRef, {
-        "current": current,
-        "peak": peak,
-        "total": total,
-      }, SetOptions(merge: true));
-    });
+      _startHeartbeat();
 
-    //--------------------------------------------------
-    // ✅ HEARTBEAT starten (alle 10s)
-    //--------------------------------------------------
-    _startHeartbeat();
-
-  } catch (e) {
-    debugPrint("RegisterViewer Error: $e");
+    } catch (e) {
+      debugPrint("RegisterViewer Error: $e");
+    }
   }
-}
+
   //--------------------------------------------------
   Future<void> _removeViewer() async {
     if (viewerId == null) return;
@@ -232,7 +174,12 @@ Future<void> _registerViewer() async {
         if (current > 0) current--;
 
         tx.delete(ref);
-        tx.set(statsRef, {"current": current}, SetOptions(merge: true));
+
+        tx.set(
+          statsRef,
+          {"current": current},
+          SetOptions(merge: true),
+        );
       });
 
     } catch (e) {
@@ -247,90 +194,100 @@ Future<void> _registerViewer() async {
 
   //--------------------------------------------------
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: Colors.black,
-    appBar: AppBar(
-      title: Text("LIVE – ${widget.locationName}"),
-      backgroundColor: Colors.green,
-    ),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
 
-    body: Column(
-      children: [
+      appBar: AppBar(
+        title: Text("LIVE – ${widget.locationName}"),
+        backgroundColor: Colors.green,
+      ),
 
-        //--------------------------------------------------
-        // 👀 VIEWER COUNT
-        //--------------------------------------------------
-        StreamBuilder(
-          stream: FirebaseFirestore.instance
-              .collection('adler_viewers')
-              .doc(widget.locationId)
-              .collection('users')
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const SizedBox();
-            }
+      body: Column(
+        children: [
 
-            final now = DateTime.now();
+          //--------------------------------------------------
+          // 👀 VIEWER COUNT
+          //--------------------------------------------------
+          StreamBuilder(
+            stream: FirebaseFirestore.instance
+                .collection('adler_viewers')
+                .doc(widget.locationId)
+                .collection('users')
+                .snapshots(),
 
-            final activeViewers = snapshot.data!.docs.where((doc) {
-              final data = doc.data();
-              final lastSeen = data['lastSeen'];
+            builder: (context, snapshot) {
 
-              if (lastSeen == null) return false;
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    "Fehler: ${snapshot.error}",
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                );
+              }
 
-              final last = (lastSeen as Timestamp).toDate();
+              if (!snapshot.hasData) {
+                return const SizedBox();
+              }
 
-              
-              return now.difference(last).inMinutes < 10;
+              final now = DateTime.now();
 
-            }).length;
+              final activeViewers = snapshot.data!.docs.where((doc) {
+                final data = doc.data();
+                final lastSeen = data['lastSeen'];
 
-            return Container(
-              padding: const EdgeInsets.all(10),
-              child: Text(
-                "👀 $activeViewers Zuschauer",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                if (lastSeen == null) return false;
+
+                final last = (lastSeen as Timestamp).toDate();
+
+                return now.difference(last).inMinutes < 10;
+
+              }).length;
+
+              return Container(
+                padding: const EdgeInsets.all(10),
+                child: Text(
+                  "👀 $activeViewers Zuschauer",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+          ),
 
-        //--------------------------------------------------
-        // 🔘 BUTTONS
-        //--------------------------------------------------
-        Row(
-          children: [
-            _modeButton("Jungkönig", "jung"),
-            _modeButton("Altkönig", "alt"),
-            _modeButton("Beide", "split"),
-          ],
-        ),
+          //--------------------------------------------------
+          // 🔘 BUTTONS
+          //--------------------------------------------------
+          Row(
+            children: [
+              _modeButton("Jungkönig", "jung"),
+              _modeButton("Altkönig", "alt"),
+              _modeButton("Beide", "split"),
+            ],
+          ),
 
-        //--------------------------------------------------
-        // 📺 LIVE CONTENT
-        //--------------------------------------------------
-        Expanded(
-          child: viewMode == "split"
-              ? Row(
-                  children: [
-                    Expanded(child: _buildSingleLive("jung")),
-                    Expanded(child: _buildSingleLive("alt")),
-                  ],
-                )
-              : _buildSingleLive(viewMode),
-        ),
+          //--------------------------------------------------
+          // 📺 LIVE CONTENT
+          //--------------------------------------------------
+          Expanded(
+            child: viewMode == "split"
+                ? Row(
+                    children: [
+                      Expanded(child: _buildSingleLive("jung")),
+                      Expanded(child: _buildSingleLive("alt")),
+                    ],
+                  )
+                : _buildSingleLive(viewMode),
+          ),
 
-      ],
-    ),
-  );
-}
-      
+        ],
+      ),
+    );
+  }
 
   //--------------------------------------------------
   Widget _modeButton(String label, String value) {
@@ -339,13 +296,16 @@ Widget build(BuildContext context) {
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => viewMode = value),
+
         child: Container(
           margin: const EdgeInsets.all(6),
           padding: const EdgeInsets.all(12),
+
           decoration: BoxDecoration(
             color: active ? Colors.green : Colors.grey.shade800,
             borderRadius: BorderRadius.circular(12),
           ),
+
           child: Center(
             child: Text(
               label,
@@ -369,10 +329,21 @@ Widget build(BuildContext context) {
           .collection('events')
           .doc(eventType)
           .snapshots(),
+
       builder: (context, snapshot) {
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              "Fehler: ${snapshot.error}",
+              style: const TextStyle(color: Colors.red),
+            ),
+          );
+        }
 
         if (snapshot.hasData && snapshot.data!.exists) {
           final newData = snapshot.data!.data() as Map<String, dynamic>;
+
           if (newData['isActive'] == true) {
             _lastValidData[eventType] = newData;
           } else {
@@ -381,13 +352,27 @@ Widget build(BuildContext context) {
         }
 
         final data = _lastValidData[eventType] ?? {};
+
         final shots = data['shots'] ?? 0;
         final king = data['kingName'];
-        final results = Map<String, dynamic>.from(data['results'] ?? {});
+
+        Map<String, dynamic> results = {};
+
+        try {
+          if (data['results'] is Map) {
+            results = Map<String, dynamic>.from(data['results']);
+          }
+        } catch (e) {
+          debugPrint("RESULTS ERROR: $e");
+        }
 
         final sorted = results.entries.toList()
-          ..sort((a, b) =>
-              (b.value['order'] ?? 0).compareTo(a.value['order'] ?? 0));
+          ..sort((a, b) {
+            final aOrder = (a.value['order'] ?? 0) as num;
+            final bOrder = (b.value['order'] ?? 0) as num;
+
+            return bOrder.compareTo(aOrder);
+          });
 
         return Column(
           children: [
@@ -395,14 +380,17 @@ Widget build(BuildContext context) {
             if (king != null)
               ScaleTransition(
                 scale: _pulse,
+
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.all(8),
+
                   decoration: BoxDecoration(
                     color: Colors.amber.shade400,
                     borderRadius: BorderRadius.circular(12),
                   ),
+
                   child: Text(
                     "👑 $king ist König mit $shots Schuss",
                     textAlign: TextAlign.center,
@@ -413,6 +401,7 @@ Widget build(BuildContext context) {
 
             Padding(
               padding: const EdgeInsets.all(12),
+
               child: Text(
                 "Schüsse: $shots",
                 style: const TextStyle(color: Colors.white),
@@ -422,18 +411,40 @@ Widget build(BuildContext context) {
             Expanded(
               child: ListView(
                 children: sorted.map((e) {
+
                   final r = e.value;
-                  final time = r['time'] != null
-                      ? _formatTime(DateTime.parse(r['time']))
-                      : "--:--";
+
+                  String time = "--:--";
+
+                  try {
+                    final rawTime = r['time'];
+
+                    if (rawTime is String) {
+                      time = _formatTime(DateTime.parse(rawTime));
+                    } else if (rawTime is Timestamp) {
+                      time = _formatTime(rawTime.toDate());
+                    }
+                  } catch (e) {
+                    debugPrint("TIME PARSE ERROR: $e");
+                  }
 
                   return ListTile(
-                    title: Text(e.key,
-                        style: const TextStyle(color: Colors.white)),
-                    subtitle: Text("${r['name']} • $time",
-                        style: const TextStyle(color: Colors.white70)),
-                    trailing: Text("${r['shots']}",
-                        style: const TextStyle(color: Colors.greenAccent)),
+                    title: Text(
+                      e.key,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+
+                    subtitle: Text(
+                      "${(r['name'] ?? "-").toString()} • $time",
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+
+                    trailing: Text(
+                      "${r['shots']}",
+                      style: const TextStyle(
+                        color: Colors.greenAccent,
+                      ),
+                    ),
                   );
                 }).toList(),
               ),

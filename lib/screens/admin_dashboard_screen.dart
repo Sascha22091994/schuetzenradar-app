@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/admin_service.dart';
+import 'submission_admin_screen.dart';
+
 
 import 'location_admin_screen.dart';
 import 'news_screen.dart';
@@ -179,6 +181,20 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
           ),
 
+Card(
+  child: ListTile(
+    leading: const Icon(Icons.inbox),
+    title: const Text("Einsendungen"),
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const SubmissionAdminScreen(),
+        ),
+      );
+    },
+  ),
+),
           //--------------------------------------------------
           // 🔴 NEUER BUTTON: RESET
           //--------------------------------------------------

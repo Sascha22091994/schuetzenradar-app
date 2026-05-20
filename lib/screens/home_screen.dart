@@ -4,12 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/festival.dart';
 import '../models/month_filter.dart';
 import '../widgets/festival_card.dart';
-import '../services/email_service.dart';
 import '../services/favorite_service.dart';
 import '../services/admin_service.dart';
 import '../screens/taxi_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import '../screens/map_screen.dart';
+import 'submit_festival_screen.dart';
+
 
 
 enum SortMode {
@@ -28,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   MonthFilter _filter = MonthFilter.all;
   String _searchQuery = '';
-  bool _showAdvanced = false;
+
   
 
 
@@ -245,257 +246,291 @@ if (_sortMode == SortMode.distance && _userPosition != null) {
           //--------------------------------------------------
           // ADMIN FAB (BLEIBT!)
           //--------------------------------------------------
-          floatingActionButton: AdminService.isAdmin
-              ? FloatingActionButton(
-                  onPressed: () => _showAddFestivalDialog(),
-                  child: const Icon(Icons.add),
-                )
-              : null,
+     
 
           body: Column(
             children: [
 
-              
-              //--------------------------------------------------
-              // FILTER
-              //--------------------------------------------------
-              SizedBox(
-                height: 45,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  children: [
-                    _btn('⭐', MonthFilter.favorites),
-                    _btn('Alle', MonthFilter.all),
-                    _btn('Heute', MonthFilter.today),
-                    _btn('Mai', MonthFilter.may),
-                    _btn('Juni', MonthFilter.june),
-                    _btn('Juli', MonthFilter.july),
-                    _btn('August', MonthFilter.august),
-                    _btn('Vergangen', MonthFilter.past),
-                  ],
-                ),
-              ),
 
-//--------------------------------------------------
-              // SEARCH
-              //--------------------------------------------------
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: TextField(
-                  onChanged: (value) =>
-                      setState(() => _searchQuery = value.toLowerCase()),
-                  decoration: InputDecoration(
-                    hintText: 'Fest oder Ort suchen...',
-                    prefixIcon: const Icon(Icons.search),
-                    filled: true,
-                    fillColor: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey.shade800
-                        : Colors.grey.shade200,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-
-//--------------------------------------------------
-// ✅ GEO INFO (OPTIONAL)
-//--------------------------------------------------
-if (_userPosition == null)
-  const Padding(
-    padding: EdgeInsets.symmetric(vertical: 4),
-    child: Text(
-      "📍 Standort wird geladen...",
-      style: TextStyle(fontSize: 12, color: Colors.grey),
+    //--------------------------------------------------
+    // 🔍 SEARCH (BLEIBT OBEN)
+    //--------------------------------------------------
+    Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+      child: TextField(
+        onChanged: (value) =>
+            setState(() => _searchQuery = value.toLowerCase()),
+        decoration: InputDecoration(
+          hintText: 'Fest oder Ort suchen...',
+          prefixIcon: const Icon(Icons.search),
+          filled: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
     ),
-  ),
+
+    //--------------------------------------------------
+    // ✅ FILTER (KOMPAKT)
+    //--------------------------------------------------
+    SizedBox(
+      height: 42,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        children: [
+          _btn('⭐', MonthFilter.favorites),
+          _btn('Alle', MonthFilter.all),
+          _btn('Heute', MonthFilter.today),
+          _btn('Mai', MonthFilter.may),
+          _btn('Juni', MonthFilter.june),
+          _btn('Juli', MonthFilter.july),
+          _btn('August', MonthFilter.august),
+        ],
+      ),
+    ),
+
+    const SizedBox(height: 6),
+
+
 
 //--------------------------------------------------
-// ✅ WEITERE OPTIONEN BUTTON
+// ✅ HEADER: FILTER + ACTION BUTTONS (FINAL)
 //--------------------------------------------------
 Padding(
   padding: const EdgeInsets.symmetric(horizontal: 12),
-  child: Align(
-    alignment: Alignment.centerLeft,
-    child: TextButton.icon(
-      onPressed: () {
-        setState(() {
-          _showAdvanced = !_showAdvanced;
-        });
-      },
-      icon: Icon(_showAdvanced ? Icons.expand_less : Icons.expand_more),
-      label: const Text("Weitere Optionen"),
-    ),
-  ),
-),
-
-//--------------------------------------------------
-// ✅ ERWEITERTE OPTIONEN (NEU)
-//--------------------------------------------------
-if (_showAdvanced)
-  Column(
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.center,
     children: [
 
       //--------------------------------------------------
-      // SORTIERUNG
+      // 🔽 FILTER (UNVERÄNDERT DROPDOWN)
       //--------------------------------------------------
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Row(
-          children: [
-            ChoiceChip(
-              label: const Text("📅 Datum"),
-              selected: _sortMode == SortMode.date,
-              onSelected: (_) {
-                setState(() => _sortMode = SortMode.date);
-              },
+      Expanded(
+        flex: 2,
+        child: Card(
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+            title: const Text(
+              "Suchfilter",
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(width: 8),
-            ChoiceChip(
-              label: const Text("📍 Entfernung"),
-              selected: _sortMode == SortMode.distance,
-              onSelected: (_) {
-                setState(() => _sortMode = SortMode.distance);
-              },
-            ),
-          ],
-        ),
-      ),
-
-      //--------------------------------------------------
-      // RADIUS
-      //--------------------------------------------------
-      if (_userPosition != null)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            childrenPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             children: [
-              Text("📍 Umkreis: ${_radiusKm.round()} km"),
-              Slider(
-                value: _radiusKm,
-                min: 5,
-                max: 100,
-                divisions: 19,
-                onChanged: (value) {
-                  setState(() {
-                    _radiusKm = value;
-                  });
-                },
+
+              //--------------------------------------
+              // SORTIERUNG
+              //--------------------------------------
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  ChoiceChip(
+                    label: const Text("📅 Datum"),
+                    selected: _sortMode == SortMode.date,
+                    onSelected: (_) {
+                      setState(() => _sortMode = SortMode.date);
+                    },
+                  ),
+                  ChoiceChip(
+                    label: const Text("📍 Entfernung"),
+                    selected: _sortMode == SortMode.distance,
+                    onSelected: (_) {
+                      setState(() => _sortMode = SortMode.distance);
+                    },
+                  ),
+                ],
               ),
+
+              const SizedBox(height: 10),
+
+              //--------------------------------------
+              // RADIUS
+              //--------------------------------------
+              if (_userPosition != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Umkreis: ${_radiusKm.round()} km"),
+                    Slider(
+                      value: _radiusKm,
+                      min: 5,
+                      max: 100,
+                      divisions: 19,
+                      onChanged: (value) {
+                        setState(() => _radiusKm = value);
+                      },
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
-    ],
-  ),
-              
+      ),
 
-
-
-
-
-
-              //--------------------------------------------------
-              // 🚕 TAXI BUTTON (AUFGEWERTET)
-              //--------------------------------------------------
-Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-  child: Row(
-    children: [
+      const SizedBox(width: 8),
 
       //--------------------------------------------------
       // 🚕 TAXI BUTTON
       //--------------------------------------------------
-      InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const TaxiScreen(),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.amber.shade300,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: const [
-              Icon(Icons.local_taxi, size: 18, color: Colors.black),
-              SizedBox(width: 6),
-              Text(
-                "Taxi",
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
+      Expanded(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const TaxiScreen(),
               ),
-            ],
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.local_taxi,
+                    color: Colors.amber, size: 22),
+                SizedBox(height: 4),
+                Text(
+                  "Taxi",
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
           ),
         ),
       ),
 
-      const SizedBox(width: 10),
+      const SizedBox(width: 6),
 
       //--------------------------------------------------
-      // 🗺 MAP BUTTON (NEU!)
+      // 🗺 KARTE BUTTON
       //--------------------------------------------------
-      InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const MapScreen(),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.green.shade300,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: const [
-              Icon(Icons.map, size: 18, color: Colors.black),
-              SizedBox(width: 6),
-              Text(
-                "Karte",
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
+      Expanded(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const MapScreen(),
               ),
-            ],
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.map,
+                    color: Colors.blue, size: 22),
+                SizedBox(height: 4),
+                Text(
+                  "Karte",
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     ],
   ),
 ),
-              //--------------------------------------------------
-              // LISTE (UNVERÄNDERT!)
-              //--------------------------------------------------
-              Expanded(
-                child: ListView(
-                  children: [
 
-                    ...filtered.map((f) {
 
-  final distance = _distanceInKm(f); // ✅ NEU
+
+
+
+    //--------------------------------------------------
+    // ✅ HIER IST DER GAMECHANGER
+    //--------------------------------------------------
+    Expanded(
+      child: ListView(
+        children: [
+
+          //--------------------------------------------------
+          // ✅ FEST MELDEN (JETZT ÜBER LISTE!)
+          //--------------------------------------------------
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.green.shade300),
+            ),
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SubmitFestivalScreen(),
+                  ),
+                );
+              },
+              child: const Center(
+                child: Text(
+                  "🎉 Fehlt ein Fest? Dann klicke hier🎉",
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ),
+
+//--------------------------------------------------
+// ✅ DICKER TRENNER
+//--------------------------------------------------
+Container(
+  margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+  height: 6,
+  decoration: BoxDecoration(
+    gradient: LinearGradient(
+      colors: [
+        Colors.green.shade300,
+        Colors.green.shade600,
+      ],
+    ),
+    borderRadius: BorderRadius.circular(8),
+  ),
+),
+
+          //--------------------------------------------------
+          // FESTIVAL LISTE
+          //--------------------------------------------------
+      ...filtered.map((f) {
+
+  final distance = _distanceInKm(f);
 
   return Dismissible(
     key: Key(f.id),
+
+    //--------------------------------------------------
+    // ✅ NUR ADMIN DARF LÖSCHEN
+    //--------------------------------------------------
     direction: AdminService.isAdmin
         ? DismissDirection.endToStart
         : DismissDirection.none,
 
+    //--------------------------------------------------
+    // ✅ BESTÄTIGUNG
+    //--------------------------------------------------
     confirmDismiss: (_) async {
       return await showDialog<bool>(
         context: context,
@@ -516,6 +551,9 @@ Padding(
       );
     },
 
+    //--------------------------------------------------
+    // ✅ LÖSCHEN
+    //--------------------------------------------------
     onDismissed: (_) async {
       await FirebaseFirestore.instance
           .collection('festivals')
@@ -523,6 +561,9 @@ Padding(
           .delete();
     },
 
+    //--------------------------------------------------
+    // ✅ SWIPE UI
+    //--------------------------------------------------
     background: Container(
       color: Colors.red,
       alignment: Alignment.centerRight,
@@ -530,12 +571,16 @@ Padding(
       child: const Icon(Icons.delete, color: Colors.white),
     ),
 
+    //--------------------------------------------------
+    // ✅ CONTENT
+    //--------------------------------------------------
     child: GestureDetector(
       onLongPress: () {
         if (AdminService.isAdmin) {
           _showEditFestivalDialog(f);
         }
       },
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -547,7 +592,6 @@ Padding(
             },
           ),
 
-          // ✅ NEU: DISTANZ ANZEIGE
           if (distance != null)
             Padding(
               padding: const EdgeInsets.only(left: 16, bottom: 8),
@@ -563,26 +607,22 @@ Padding(
       ),
     ),
   );
-}),
 
-                  
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: ElevatedButton.icon(
-                        onPressed: () => EmailService.sendFeedback(),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Fehlt dein Schützenfest?'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+}).toList(),
+
+        ],
+      ), // ✅ ListView
+
+    ), // ✅ Expanded
+
+  ], // ✅ Column children
+), // ✅ Column
+
+); // ✅ Scaffold
+},
     );
   }
+
 
   //--------------------------------------------------
   Widget _btn(String label, MonthFilter value) {
@@ -611,7 +651,7 @@ Padding(
   //--------------------------------------------------
   // ADD + EDIT (UNVERÄNDERT übernommen)
   //--------------------------------------------------
-  void _showAddFestivalDialog() {}
 
-  void _showEditFestivalDialog(Festival f) {}
+
+ void _showEditFestivalDialog(Festival f) {}
 }

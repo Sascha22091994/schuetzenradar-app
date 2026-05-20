@@ -112,57 +112,107 @@ Future<DocumentReference> _ensureLiveEvent() async {
     _checkInactivityAuto();
   }
 
-  Future<void> _loadBothEvents() async {
-    for (var event in ["jung", "alt"]) {
-      final doc = await FirebaseFirestore.instance
-          .collection('adler_events')
-          .doc(widget.locationId)
-          .collection('events')
-          .doc(event)
-          .get();
-
-      if (!doc.exists) continue;
-
-      final data = doc.data()!;
-      eventData[event] = {
-        "shots": data['shots'] ?? 0,
-        "kingName": data['kingName'],
-        "results": Map<String, dynamic>.from(data['results'] ?? {}),
-        "players": List<String>.from(data['participants'] ?? []),
-      };
-    }
-
-
-    setState(() {});
-  }
-
-  //--------------------------------------------------
-  Future<void> _saveData() async {
-    final isActive =
-        current['shots'] > 0 ||
-        current['players'].isNotEmpty ||
-        current['results'].isNotEmpty;
-
-    await FirebaseFirestore.instance
+Future<void> _loadBothEvents() async {
+  for (var event in ["jung", "alt"]) {
+    final doc = await FirebaseFirestore.instance
         .collection('adler_events')
         .doc(widget.locationId)
         .collection('events')
-        .doc(selectedEvent)
-        .set({
-      "isActive": isActive,
-      "shots": current['shots'],
-      "kingName": current['kingName'],
-      "results": current['results'],
-      "participants": current['players'],
-      "eventType": selectedEvent,
-      "lastUpdate": FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+        .doc(event)
+        .get();
 
-    await FirebaseFirestore.instance
-        .collection('locations')
-        .doc(widget.locationId)
-        .set({"isLive": isActive}, SetOptions(merge: true));
+    if (!doc.exists) continue;
+
+    final data = doc.data()!;
+
+    //--------------------------------------------------
+    // ✅ RESULTS LADEN (SICHER)
+    //--------------------------------------------------
+    Map<String, dynamic> safeResults = {};
+
+    if (data['results'] is Map) {
+      safeResults = Map<String, dynamic>.from(data['results']);
+    }
+
+    //--------------------------------------------------
+    // 🔥 CRASH FIX: falsche Struktur entfernen
+    //--------------------------------------------------
+    if (safeResults.containsKey('shots')) {
+      safeResults = {};
+    }
+
+    //--------------------------------------------------
+    // ✅ SPEICHERN IM STATE
+    //--------------------------------------------------
+    eventData[event] = {
+      "shots": data['shots'] ?? 0,
+      "kingName": data['kingName'],
+      "results": safeResults,
+      "players": List<String>.from(data['participants'] ?? []),
+    };
   }
+
+  setState(() {});
+}
+
+  //--------------------------------------------------
+
+Future<void> _saveData() async {
+
+  //--------------------------------------------------
+  // 🔥 CRASH-FIX 1: results absichern
+  //--------------------------------------------------
+  if (current['results'] == null ||
+      current['results'] is! Map) {
+    current['results'] = {};
+  }
+
+  //--------------------------------------------------
+  // 🔥 CRASH-FIX 2: falsche Struktur entfernen
+  //--------------------------------------------------
+  if (current['results'] is Map &&
+      current['results'].containsKey('shots')) {
+    current['results'] = {};
+  }
+
+  //--------------------------------------------------
+  // ✅ isActive sauber berechnen
+  //--------------------------------------------------
+  final isActive =
+      (current['shots'] ?? 0) > 0 ||
+      (current['players'] as List).isNotEmpty ||
+      (current['results'] as Map).isNotEmpty;
+
+  //--------------------------------------------------
+  // ✅ FIRESTORE SAVE
+  //--------------------------------------------------
+  await FirebaseFirestore.instance
+      .collection('adler_events')
+      .doc(widget.locationId)
+      .collection('events')
+      .doc(selectedEvent)
+      .set({
+    "isActive": isActive,
+    "shots": current['shots'] ?? 0,
+    "kingName": current['kingName'],
+    "results": current['results'],   // ✅ jetzt garantiert sauber
+    "participants": current['players'] ?? [],
+    "eventType": selectedEvent,
+    "lastUpdate": FieldValue.serverTimestamp(),
+  }, SetOptions(merge: true));
+
+  //--------------------------------------------------
+  // ✅ LOCATION STATUS
+  //--------------------------------------------------
+  await FirebaseFirestore.instance
+      .collection('locations')
+      .doc(widget.locationId)
+      .set({
+        "isLive": isActive
+      }, SetOptions(merge: true));
+}
+
+
 
 //--------------------------------------------------
 // ✅ ARCHIVIEREN (NEU)
@@ -432,10 +482,21 @@ Future<void> _resetGame() async {
   ],
 ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
+
+body: Padding(
+  padding: const EdgeInsets.all(12),
+  child: Column(
+    children: [
+
+      //--------------------------------------------------
+      // ✅ SCROLLBARER OBERER TEIL
+      //--------------------------------------------------
+     Flexible(
+  child: ListView(
+    shrinkWrap: true,
+    children: [
+
+
 
 //--------------------------------------------------
 // ℹ️ INFO FÜR PROTOKOLLFÜHRER
@@ -592,12 +653,24 @@ SizedBox(
 
 
             if (players.isNotEmpty)
-              Wrap(
-                spacing: 6,
-                children: players.map((p) => Chip(label: Text(p))).toList(),
-              ),
+             SingleChildScrollView(
+  scrollDirection: Axis.horizontal,
+  child: Row(
+    children: players
+        .map((p) => Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Chip(label: Text(p)),
+            ))
+        .toList(),
+  ),
+),
+
 
             const SizedBox(height: 10),
+
+      ],
+        ),
+      ),
 
             //--------------------------------------------------
             // PARTS

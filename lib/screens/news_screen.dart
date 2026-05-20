@@ -3,10 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/news.dart';
-import '../services/email_service.dart';
-import '../services/admin_service.dart';
 import 'adler_live_screen.dart';
 import '../screens/contact_screen.dart';
+import 'submit_news_screen.dart';
+
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -20,7 +20,7 @@ class _NewsScreenState extends State<NewsScreen> {
   bool _showInfo = true;
   String selectedFilter = "all";
 
-  final Set<String> _expandedLiveEvents = {};
+final Set<String> _expandedLiveEvents = {};
 
   @override
   void initState() {
@@ -163,22 +163,22 @@ class _NewsScreenState extends State<NewsScreen> {
     ],
   ),
 
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.campaign_outlined),
-      onPressed: () => EmailService.sendFeedback(),
-    ),
-  ],
+
 ),
 
 
-      floatingActionButton: AdminService.isAdmin
-          ? FloatingActionButton(onPressed: () {}, child: const Icon(Icons.add))
-          : FloatingActionButton.extended(
-              onPressed: () => EmailService.sendFeedback(),
-              icon: const Icon(Icons.add),
-              label: const Text("News melden"),
-            ),
+      floatingActionButton: FloatingActionButton.extended(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SubmitNewsScreen(),
+      ),
+    );
+  },
+  icon: const Icon(Icons.add),
+  label: const Text("News melden"),
+),
 
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -196,10 +196,14 @@ class _NewsScreenState extends State<NewsScreen> {
         
 
 final filteredDocs = allDocs.where((doc) {
-  final data = doc.data() as Map<String, dynamic>;
 
+  final data = doc.data() as Map<String, dynamic>;
   final isLiveEvent = data['type'] == 'liveEvent';
   final isActive = data['isActive'] == true;
+
+
+
+
 
   //--------------------------------------------------
   // ✅ LIVE EVENTS NUR WENN AKTIV
@@ -232,6 +236,18 @@ final filteredDocs = allDocs.where((doc) {
   return true;
 
 }).toList();
+
+//--------------------------------------------------
+// ✅ SORTIERUNG (NEUSTE ZUERST)
+//--------------------------------------------------
+final sortedDocs = filteredDocs
+  ..sort((a, b) {
+    final da = NewsItem.fromMap(a.data() as Map<String, dynamic>).date;
+    final db = NewsItem.fromMap(b.data() as Map<String, dynamic>).date;
+
+    return db.compareTo(da);
+  });
+
 
 
           return ListView(
@@ -448,196 +464,212 @@ FutureBuilder(
 
 
 //--------------------------------------------------
-// ✅ NEWS
-//--------------------------------------------------
-...filteredDocs.map((doc) {
-  final data = doc.data() as Map<String, dynamic>;
+    // ✅ NEWS LISTE
+    //--------------------------------------------------
+    ...sortedDocs.map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
 
-  // ✅ LIVE EVENT
-  if (data['type'] == 'liveEvent') {
-
-    final isActive = data['isActive'] == true;
-    final expanded = _expandedLiveEvents.contains(doc.id);
-
-    final locationId =
-        (data['locationId'] ?? "")
-        .toString()
-        .trim();
-        if (locationId.isEmpty) {
-  return const SizedBox();
-}
-
-        
-
-    final isKingSet =
-    (data['kingName'] ?? "").toString().isNotEmpty;
-
-return Card(
-  margin: const EdgeInsets.only(bottom: 12),
-
-  // ✅ DAS IST DIE GANZE LOGIK
-  color: isKingSet
-      ? Colors.amber.shade100
-      : isActive
-          ? Colors.orange.shade50
-          : Colors.grey.shade200,
-
-  child: Column(
-    children: [
-
-ListTile(
-  leading: Icon(
-    Icons.whatshot,
-color: isKingSet
-    ? Colors.amber
-    : isActive
-        ? Colors.orange
-        : Colors.grey.shade500,
+      //--------------------------------------------------
+      // ✅ LIVE EVENT
+      //--------------------------------------------------
+     if (data['type'] == 'liveEvent') {
+final docId = doc.id;
+final expanded = _expandedLiveEvents.contains(docId);
 
 
-  ),
 
-  title: Text(
-    isKingSet
-        ? "👑 ${(data['location'] ?? "Unbekannt")} – König steht fest!"
-        : "${(data['location'] ?? "Unbekannt")} – Adlerschießen",
-    style: TextStyle(
-      fontWeight: FontWeight.bold,
-      fontSize: 16,
-      color: isActive ? Colors.red : Colors.green,
-    ),
-  ),
+  final isActive = data['isActive'] == true;
+  final locationId = (data['locationId'] ?? "").toString();
 
-subtitle: Text(
-  isKingSet
-      ? "👑 ${(data['kingName'] ?? "").toString()} ist König!"
-      : (isActive
-          ? "🟠 Live‑Ticker aktiv – Treffer in Echtzeit"
-          : "Keine Live‑Events aktiv"),
-  style: TextStyle(
-    fontWeight: FontWeight.w600,
-    color: isKingSet
-    ? Colors.amber.shade800
-    : isActive
-        ? Colors.orange.shade700
-        : Colors.grey.shade500,
+  if (locationId.isEmpty) {
+    return const SizedBox();
+  }
 
-  ),
-),
+  return Card(
+    margin: const EdgeInsets.only(bottom: 12),
+    
+color: isActive
+    ? (theme.brightness == Brightness.dark
+        ? const Color(0xFF2A2A2A)   // 🔥 dunkles Grau
+        : Colors.orange.shade50)
+    : (theme.brightness == Brightness.dark
+        ? const Color(0xFF1E1E1E)   // 🔥 Standard Dark Card
+        : Colors.grey.shade200),
 
-  trailing: Icon(
-    expanded
-        ? Icons.expand_less
-        : Icons.expand_more,
-    color: isActive ? Colors.red : Colors.green,
-  ),
 
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        //--------------------------------------------------
+        // ✅ HEADER
+        //--------------------------------------------------
+        ListTile(
   onTap: () {
     setState(() {
       expanded
-          ? _expandedLiveEvents.remove(doc.id)
-          : _expandedLiveEvents.add(doc.id);
+  ? _expandedLiveEvents.remove(docId)
+  : _expandedLiveEvents.add(docId);
+
     });
   },
+
+  trailing: Icon(
+    expanded ? Icons.expand_less : Icons.expand_more,
+  ),
+          leading: Icon(
+            Icons.whatshot,
+            color: isActive ? Colors.orange : Colors.grey,
+          ),
+
+          title: Text(
+            "${data['location'] ?? "Unbekannt"} – Adlerschießen",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+
+          subtitle: Text(
+            isActive
+                ? "🟠 Live‑Ticker aktiv"
+                : "Keine Live‑Events aktiv",
+          ),
+        ),
+
+        //--------------------------------------------------
+        // 🔥 LIVE TREFFER
+        //--------------------------------------------------
+
+//--------------------------------------------------
+// 🔥 LIVE TREFFER (KORREKT)
+//--------------------------------------------------
+
+
+...(isActive && expanded
+    ? [
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+          
+
+              //--------------------------------------
+              // 🧒 JUNGKÖNIG
+              //--------------------------------------
+              Text(
+  "🧒 Jungkönig",
+  style: TextStyle(
+    fontWeight: FontWeight.bold,
+    color: Theme.of(context).brightness == Brightness.dark
+        ? Colors.orange.shade300
+        : Colors.orange,
+  ),
 ),
+              const SizedBox(height: 6),
 
-          //--------------------------------------------------
-          // ✅ EXPANDED CONTENT
-          //--------------------------------------------------
-          if (expanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Column(
-                children: [
-                  const Divider(height: 20),
+              ..._buildLiveHits(locationId, "jung"),
 
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              const SizedBox(height: 12),
 
-                      //---------------------------------------
-                      // 🧒 JUNG
-                      //---------------------------------------
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "🧒 Jungkönig",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-
-                            ..._buildLiveHits(locationId, "jung"),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(width: 12),
-
-                      //---------------------------------------
-                      // 👑 ALT
-                      //---------------------------------------
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "👑 Altkönig",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.deepOrange,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-
-                            ..._buildLiveHits(locationId, "alt"),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              //--------------------------------------
+              // 👑 ALTKÖNIG
+              //--------------------------------------
+              const Text(
+                "👑 Altkönig",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepOrange,
+                ),
               ),
-            ),
-        ],
-      ),
-    );
-  }
 
-  //--------------------------------------------------
-  // ✅ NORMALE NEWS
-  //--------------------------------------------------
-  final news = NewsItem.fromMap(data);
-  final important = data['isImportant'] == true;
+              const SizedBox(height: 6),
 
-  return Card(
-    color: important ? Colors.amber.shade50 : null,
-    child: ListTile(
-      title: Text(
-        news.title,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-      subtitle: Text(
-        "${_formatDate(news.date)}\n${news.text}",
-      ),
+              ..._buildLiveHits(locationId, "alt"),
+            ],
+          ),
+        ),
+      ]
+    : []),
+
+],
     ),
   );
+}
+
+    
 
 
-}).toList(),
-],
-);
-},
-      ),
-    );
-  }
 
-// ✅ DAS WAR DEIN FEHLER
+      //--------------------------------------------------
+      // ✅ NORMALE NEWS
+      //--------------------------------------------------
+      final news = NewsItem.fromMap(data);
+      final important = data['isImportant'] == true;
 
+      return Card(
+        color: important ? Colors.amber.shade50 : null,
+        child: ListTile(
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  news.title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              if ((data['location'] ?? '').toString().isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    data['location'],
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _formatDate(news.date),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(news.text),
+              ],
+            ),
+          ),
+        ),
+      );
+
+
+    }).toList(),
+
+
+  ],
+); // ✅ ListView
+
+}, // ✅ StreamBuilder builder
+
+), // ✅ StreamBuilder
+
+); // ✅ Scaffold  ← DAS HAT DIR GEFEHLT
+
+} //
 
 
 
@@ -758,20 +790,34 @@ List<Widget> _buildLiveHits(String locationId, String eventType) {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
 
-                          Text(
-                            e.key.toString(),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
+                          
+Text(
+  e.key.toString(),
+  style: TextStyle(
+    fontWeight: FontWeight.bold,
+    fontSize: 14,
+    color: Theme.of(context).brightness == Brightness.dark
+        ? Colors.orange.shade300
+        : Colors.black,
+  ),
+),
+
 
                           const SizedBox(height: 2),
 
                           Text(
-                            (r['name'] ?? "-").toString(),
-                            style: const TextStyle(fontSize: 13),
-                          ),
+                            
+ (r['name'] ?? "-").toString(),
+  style: TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black,
+
+  ),
+)
+,
 
                           const SizedBox(height: 2),
 
@@ -836,5 +882,61 @@ List<Widget> _buildLiveHits(String locationId, String eventType) {
   ];
 }
 
+//--------------------------------------------------
+// ✅ LIVE UPDATES AUS NEWS (CRASH-SAFE)
+//--------------------------------------------------
+List<Widget> _buildNewsUpdates(Map<String, dynamic> data) {
+
+  final updatesRaw = data['updates'];
+
+  if (updatesRaw is! List) return [];
+
+  return updatesRaw.map<Widget>((item) {
+
+    final u = item is Map ? Map<String, dynamic>.from(item) : {};
+
+    //--------------------------------------------------
+    // ✅ ALTES FORMAT (text)
+    //--------------------------------------------------
+    if (u.containsKey('text')) {
+
+      String time = "--:--";
+      if (u['time'] != null) {
+        final parsed = DateTime.tryParse(u['time'].toString());
+        if (parsed != null) {
+          time = _formatTime(parsed);
+        }
+      }
+
+      return ListTile(
+        leading: const Icon(Icons.flash_on, color: Colors.orange),
+        title: Text(u['text'].toString()),
+        trailing: Text(time),
+      );
+    }
+
+    //--------------------------------------------------
+    // ✅ NEUES FORMAT (name + shots)
+    //--------------------------------------------------
+    final name = (u['name'] ?? "-").toString();
+    final shots = (u['shots'] ?? "-").toString();
+
+    String time = "--:--";
+    if (u['time'] != null) {
+      final parsed = DateTime.tryParse(u['time'].toString());
+      if (parsed != null) {
+        time = _formatTime(parsed);
+      }
+    }
+
+    return ListTile(
+      leading: const Icon(Icons.check_circle, color: Colors.green),
+      title: Text(name),
+      subtitle: Text("$shots Schuss"),
+      trailing: Text(time),
+    );
+
+  }).toList();
+}
 
 }

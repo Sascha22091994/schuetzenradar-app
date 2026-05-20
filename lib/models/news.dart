@@ -1,4 +1,6 @@
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class NewsItem {
   final String title;
   final String text;
@@ -15,10 +17,29 @@ class NewsItem {
   });
 
   factory NewsItem.fromMap(Map<String, dynamic> data) {
+
+    //--------------------------------------------------
+    // ✅ DATE SAFE PARSING (MEGA WICHTIG)
+    //--------------------------------------------------
+    final rawDate = data['date'];
+
+    DateTime parsedDate;
+
+    if (rawDate is Timestamp) {
+      parsedDate = rawDate.toDate();
+    } else if (rawDate is String) {
+      parsedDate = DateTime.tryParse(rawDate) ?? DateTime.now();
+    } else {
+      parsedDate = DateTime.now();
+    }
+
+    //--------------------------------------------------
+    // ✅ RETURN OBJECT
+    //--------------------------------------------------
     return NewsItem(
       title: data['title'] ?? '',
-      text: data['content'] ?? '',
-      date: DateTime.tryParse(data['date'] ?? '') ?? DateTime.now(),
+      text: data['text'] ?? data['content'] ?? '',
+      date: parsedDate,
       isImportant: data['isImportant'] ?? false,
       isNew: data['isNew'] ?? false,
     );

@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import '../services/email_service.dart';
 import 'legal_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'submit_news_screen.dart';
+import 'submit_festival_screen.dart';
+import 'adler_login_screen.dart';
 
 class ContactScreen extends StatelessWidget {
   const ContactScreen({super.key});
@@ -38,213 +41,283 @@ Future<void> _openInstagram() async {
 }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-     appBar: AppBar(
-  elevation: 0,
-  backgroundColor: Colors.green.shade700,
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      elevation: 0,
+      backgroundColor: Colors.green.shade700,
 
-  flexibleSpace: Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          Colors.green.shade800,
-          Colors.green.shade600,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.green.shade800,
+              Colors.green.shade600,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+      ),
+
+      title: Row(
+        children: const [
+          Icon(Icons.contact_mail_outlined,
+              color: Colors.white, size: 35),
+          SizedBox(width: 8),
+          Text(
+            "Kontakt",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 30,
+              letterSpacing: 0.4,
+            ),
+          ),
         ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
       ),
     ),
-  ),
 
-  title: Row(
-    children: const [
-      Icon(Icons.contact_mail_outlined, color: Colors.white, size: 35),
-      SizedBox(width: 8),
-      Text(
-        "Kontakt",
+    //--------------------------------------------------
+    // ✅ BODY (FIXED!)
+    //--------------------------------------------------
+    body: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+
+        //--------------------------------------------------
+        // HEADLINE
+        //--------------------------------------------------
+        const Text(
+          "Wie kann ich dir helfen?",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        const Text(
+          "Wähle einfach den passenden Bereich aus:",
+        ),
+
+        const SizedBox(height: 20),
+
+        //--------------------------------------------------
+        // FEST EINREICHEN
+        //--------------------------------------------------
+        InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SubmitFestivalScreen(),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.green.shade300),
+            ),
+            child: Row(
+              children: const [
+                Icon(Icons.event, color: Colors.green, size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "🎉 Fest einreichen\nFehlt ein Schützenfest oder sind Daten falsch?",
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        //--------------------------------------------------
+        // NEWS EINREICHEN
+        //--------------------------------------------------
+        InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SubmitNewsScreen(),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.blue.shade300),
+            ),
+            child: Row(
+              children: const [
+                Icon(Icons.article, color: Colors.blue, size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "📰 News einreichen\nNeue Infos, Updates oder Highlights melden",
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        //--------------------------------------------------
+        // NACHRICHT SENDEN
+        //--------------------------------------------------
+        InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            EmailService.sendFeedback();
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.shade400),
+            ),
+            child: Row(
+              children: const [
+                Icon(Icons.email, color: Colors.black87, size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "💬 Nachricht senden\nFeedback, Fehler oder sonstige Anliegen",
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 30),
+
+
+
+//--------------------------------------------------
+// 🦅 ADLER INFO + DEMO
+//--------------------------------------------------
+Container(
+  padding: const EdgeInsets.all(14),
+  decoration: BoxDecoration(
+    color: Colors.orange.withValues(alpha: 0.12),
+    borderRadius: BorderRadius.circular(14),
+    border: Border.all(color: Colors.orange.shade300),
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+
+      const Text(
+        "🦅 Live-Adlerschießen",
         style: TextStyle(
           fontWeight: FontWeight.bold,
-          fontSize: 30,
-          letterSpacing: 0.4,
+          fontSize: 16,
+        ),
+      ),
+
+      const SizedBox(height: 6),
+
+      const Text(
+        "Mit SchützenRadar kannst du das Adlerschießen live verfolgen.\n\n"
+        "Vereine können Teilnehmer eintragen, Schüsse zählen und den Stand in Echtzeit anzeigen.\n\n"
+        "👉 Du möchtest das für dein Fest nutzen?\n"
+        "Dann sende einfach eine Nachricht mit Ort und Veranstaltung.",
+      ),
+
+      const SizedBox(height: 12),
+
+      //--------------------------------------------------
+      // ✅ DEMO BUTTON
+      //--------------------------------------------------
+      InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AdlerLoginScreen(
+                locationId: "demo",
+                locationName: "Demo",
+              ),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: const [
+              Icon(Icons.play_arrow, color: Colors.orange),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Demo ansehen",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 12),
+            ],
+          ),
         ),
       ),
     ],
   ),
-
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.campaign_outlined),
-      tooltip: 'Feedback senden',
-      onPressed: () {
-        EmailService.sendFeedback();
-      },
-    ),
-  ],
 ),
+      //--------------------------------------------------
+        // INSTAGRAM
+        //--------------------------------------------------
 
-
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-
-          const Text(
-            '💬 Feedback & Kontakt',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          const Text(
-            'Diese App lebt von aktuellen Informationen und eurer Unterstützung.\n\n'
-
-            '👉 Fehlt ein Schützenfest?\n'
-            '👉 Sind Daten nicht mehr aktuell?\n'
-            '👉 Gibt es neue Infos oder Änderungen?\n'
-            '👉 Hast du Ideen zur Verbesserung?\n\n'
-
-            'Dann melde dich gerne – jede Info hilft!\n\n'
-
-            '------------------------------\n\n'
-
-            '🦅 Adlerbereich (Live-Adlerschießen)\n\n'
-
-            'Du möchtest das Adlerschießen für dein Schützenfest live eintragen?\n\n'
-
-            '👉 Schreib uns einfach eine Nachricht\n'
-            '👉 Nenne den Ort / das Schützenfest\n\n'
-
-            'Du erhältst dann Zugriff für den Live-Bereich.\n\n'
-
-            'So können:\n'
-            '• Teilnehmer eingetragen werden\n'
-            '• Schüsse gezählt werden\n'
-            '• der Königsstand live verfolgt werden\n\n'
-
-            '------------------------------\n\n'
-
-            '📬 Kontakt\n\n'
-
-            'Tippe auf "Nachricht senden", um uns direkt eine E-Mail zu schicken.\n\n'
-
-            'Vielen Dank für deine Unterstützung! 🙌',
-          ),
-
-          const SizedBox(height: 20),
-
-          //--------------------------------------------------
-          // MAIL BUTTON
-          //--------------------------------------------------
-          ElevatedButton.icon(
-            onPressed: () {
-              EmailService.sendFeedback();
-            },
-            icon: const Icon(Icons.email),
-            label: const Text('Nachricht senden'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-          ),
-
-const SizedBox(height: 12),
+const SizedBox(height: 16),
 
 ElevatedButton.icon(
   onPressed: _openInstagram,
   icon: const Icon(Icons.camera_alt),
   label: const Text("Instagram besuchen"),
-  style: ElevatedButton.styleFrom(
-    padding: const EdgeInsets.symmetric(vertical: 14),
-  ),
 ),
 
-          //--------------------------------------------------
-          // ✅ ANIMIERTER BUTTON
-          //--------------------------------------------------
-          /*_AnimatedBeerButton(
-            onPressed: () => _openPayPal(context),
-          ),
-*/
-          //--------------------------------------------------
-          // RECHTLICHES
-          //--------------------------------------------------
-          const SizedBox(height: 30),
-
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const LegalScreen(),
-                ),
-              );
-            },
-            icon: const Icon(Icons.description),
-            label: const Text("Impressum & Datenschutz"),
-          ),
-
-          const SizedBox(height: 20),
-        ],
-      ),
-    );
-  }
-}
-
-//////////////////////////////////////////////////////
-// ✅ ANIMIERTER BUTTON (SUBTIL)
-//////////////////////////////////////////////////////
-
-class _AnimatedBeerButton extends StatefulWidget {
-  final VoidCallback onPressed;
-
-  const _AnimatedBeerButton({required this.onPressed});
-
-  @override
-  State<_AnimatedBeerButton> createState() => _AnimatedBeerButtonState();
-}
-
-class _AnimatedBeerButtonState extends State<_AnimatedBeerButton>
-    with SingleTickerProviderStateMixin {
-
-  late AnimationController _controller;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-
-    _scale = Tween(begin: 1.0, end: 1.035).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scale,
-      child: ElevatedButton.icon(
-        onPressed: widget.onPressed,
-        icon: const Icon(Icons.local_drink),
-        label: const Text("🍺 Bier ausgeben"),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.amber.shade700,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+const SizedBox(height: 24),
+        //--------------------------------------------------
+        // RECHTLICHES
+        //--------------------------------------------------
+        ElevatedButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const LegalScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.description),
+          label: const Text("Impressum & Datenschutz"),
         ),
-      ),
-    );
-  }
-}
+
+        const SizedBox(height: 20),
+      ],
+    ),
+  );
+}}
+
