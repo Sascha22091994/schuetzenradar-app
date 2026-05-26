@@ -3,17 +3,30 @@ import '../models/festival.dart';
 import '../services/favorite_service.dart';
 import '../screens/festival_detail_screen.dart';
 
-class FestivalCard extends StatelessWidget {
+class FestivalCard extends StatefulWidget {
   final Festival festival;
-
-  // ✅ NEU
   final VoidCallback onFavoriteChanged;
 
   const FestivalCard({
     super.key,
     required this.festival,
-    required this.onFavoriteChanged, // ✅ NEU
+    required this.onFavoriteChanged,
   });
+
+  @override
+  State<FestivalCard> createState() => _FestivalCardState();
+}
+
+class _FestivalCardState extends State<FestivalCard> {
+
+  late bool isFav;
+
+  //--------------------------------------------------
+  @override
+  void initState() {
+    super.initState();
+    isFav = FavoriteService.isFavorite(widget.festival.id);
+  }
 
   //--------------------------------------------------
   DateTime get now => DateTime.now();
@@ -22,21 +35,21 @@ class FestivalCard extends StatelessWidget {
     final today = DateTime(now.year, now.month, now.day);
 
     final start = DateTime(
-        festival.startDate.year,
-        festival.startDate.month,
-        festival.startDate.day);
+        widget.festival.startDate.year,
+        widget.festival.startDate.month,
+        widget.festival.startDate.day);
 
     final end = DateTime(
-        festival.endDate.year,
-        festival.endDate.month,
-        festival.endDate.day);
+        widget.festival.endDate.year,
+        widget.festival.endDate.month,
+        widget.festival.endDate.day);
 
     return !start.isAfter(today) && !end.isBefore(today);
   }
 
   bool _isFuture() {
     final today = DateTime(now.year, now.month, now.day);
-    return festival.startDate.isAfter(today);
+    return widget.festival.startDate.isAfter(today);
   }
 
   bool _isLive() {
@@ -45,24 +58,46 @@ class FestivalCard extends StatelessWidget {
 
   //--------------------------------------------------
   String _formatDate() {
-    return "${festival.startDate.day}.${festival.startDate.month}.${festival.startDate.year}";
+    return "${widget.festival.startDate.day}.${widget.festival.startDate.month}.${widget.festival.startDate.year}";
   }
 
   //--------------------------------------------------
   String _getCountdown() {
-    final diff = festival.startDate.difference(now);
+    final now = DateTime.now();
 
-    if (diff.inDays > 1) {
-      return "in ${diff.inDays} Tagen";
-    } else if (diff.inDays == 1) {
+    final today = DateTime(now.year, now.month, now.day);
+
+    final eventDate = DateTime(
+      widget.festival.startDate.year,
+      widget.festival.startDate.month,
+      widget.festival.startDate.day,
+    );
+
+    final diff = eventDate.difference(today).inDays;
+
+    if (diff == 0) {
+      return "heute";
+    } else if (diff == 1) {
       return "morgen 🎉";
-    } else if (diff.inHours > 0) {
-      return "in ${diff.inHours}h";
-    } else if (diff.inMinutes > 0) {
-      return "in ${diff.inMinutes} Min";
+    } else if (diff > 1) {
+      return "in $diff Tagen";
     } else {
-      return "gleich";
+      return "läuft";
     }
+  }
+
+  //--------------------------------------------------
+  Future<void> _toggleFavorite() async {
+
+    // ✅ SOFORT UI ändern (wichtig!)
+    setState(() {
+      isFav = !isFav;
+    });
+
+    // ✅ danach speichern
+    await FavoriteService.toggleFavorite(widget.festival.id);
+
+    widget.onFavoriteChanged();
   }
 
   //--------------------------------------------------
@@ -72,7 +107,6 @@ class FestivalCard extends StatelessWidget {
     final isToday = _isToday();
     final isLive = _isLive();
     final isFuture = _isFuture();
-    final isFav = FavoriteService.isFavorite(festival.id);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
@@ -84,7 +118,7 @@ class FestivalCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => FestivalDetailScreen(festival: festival),
+              builder: (_) => FestivalDetailScreen(festival: widget.festival),
             ),
           );
         },
@@ -164,14 +198,12 @@ class FestivalCard extends StatelessWidget {
                   const Spacer(),
 
                   //--------------------------------------------------
-                  // ✅ FIXED FAVORITE BUTTON
+                  // ⭐ FAVORITE BUTTON (FIXED)
                   //--------------------------------------------------
-                  GestureDetector(
-                    onTap: () async {
-                      await FavoriteService.toggleFavorite(festival.id);
-                      onFavoriteChanged(); // ✅ DAS WAR DER FEHLER
-                    },
-                    child: Icon(
+
+                  IconButton(
+                    onPressed: _toggleFavorite,
+                    icon: Icon(
                       isFav ? Icons.star : Icons.star_border,
                       color: isFav ? Colors.amber : Colors.grey,
                     ),
@@ -182,7 +214,7 @@ class FestivalCard extends StatelessWidget {
               const SizedBox(height: 10),
 
               Text(
-                festival.name,
+                widget.festival.name,
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.bold,
@@ -204,7 +236,7 @@ class FestivalCard extends StatelessWidget {
                 Text(
                   "Start ${_getCountdown()}",
                   style: TextStyle(
-                    color: Colors.green.shade600,
+                    color: Colors.green,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -217,7 +249,7 @@ class FestivalCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
-                      festival.address,
+                      widget.festival.address,
                       style: TextStyle(
                         fontSize: 13,
                         color: isDark

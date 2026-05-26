@@ -9,7 +9,7 @@ import '../screens/taxi_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import '../screens/map_screen.dart';
 import 'submit_festival_screen.dart';
-
+import 'calendar_screen.dart';
 
 
 enum SortMode {
@@ -39,7 +39,12 @@ SortMode _sortMode = SortMode.date;
   Position? _userPosition;
   double _radiusKm = 25;
 
-  DateTime get now => DateTime.now();
+ 
+DateTime get today {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
+}
+
 
   @override
   void initState() {
@@ -108,13 +113,13 @@ double? _distanceInKm(Festival f) {
 
   //--------------------------------------------------
   bool _isPast(Festival f) {
-    final today = DateTime(now.year, now.month, now.day);
+    final today = this.today;
     final end = DateTime(f.endDate.year, f.endDate.month, f.endDate.day);
     return end.isBefore(today);
   }
 
   bool _isToday(Festival f) {
-    final today = DateTime(now.year, now.month, now.day);
+    final today = this.today;
 
     final start = DateTime(f.startDate.year, f.startDate.month, f.startDate.day);
     final end = DateTime(f.endDate.year, f.endDate.month, f.endDate.day);
@@ -404,11 +409,10 @@ Padding(
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.local_taxi,
-                    size: 18, color: Colors.black87),
+                Icon(Icons.local_taxi, size: 18, color: Colors.black87),
                 SizedBox(width: 6),
                 Text(
-                  "Taxi finden",
+                  "Taxi",
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -449,7 +453,48 @@ Padding(
                 Icon(Icons.map, size: 18, color: Colors.white),
                 SizedBox(width: 6),
                 Text(
-                  "Karte öffnen",
+                  "Karte",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+
+      const SizedBox(width: 8),
+
+      //--------------------------------------------------
+      // 📅 KALENDER
+      //--------------------------------------------------
+      Expanded(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CalendarScreen(),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.green.shade400,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.calendar_month, size: 18, color: Colors.white),
+                SizedBox(width: 6),
+                Text(
+                  "Kalender",
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -499,12 +544,15 @@ Padding(
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      FestivalCard(
-        festival: f,
-        onFavoriteChanged: () {
-          setState(() {});
-        },
-      ),
+      
+FestivalCard(
+  key: ValueKey("${f.id}_${FavoriteService.isFavorite(f.id)}"),
+  festival: f,
+  onFavoriteChanged: () {
+    setState(() {});
+  },
+),
+
       if (distance != null)
         Padding(
           padding: const EdgeInsets.only(left: 16, bottom: 8),

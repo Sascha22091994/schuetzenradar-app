@@ -299,6 +299,35 @@ ElevatedButton.icon(
 ),
 
 const SizedBox(height: 24),
+
+const SizedBox(height: 16),
+
+ElevatedButton.icon(
+  onPressed: () async {
+    final uri = Uri.parse(
+      "https://sascha22091994.github.io/schuetzenradar-legal/",
+    );
+
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    // ✅ kleines Danke Feedback
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("💛 Danke für deinen Support!"),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  },
+  icon: const Icon(Icons.favorite),
+  label: const Text("💚 Projekt unterstützen"),
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.green,
+  ),
+),
+
+
         //--------------------------------------------------
         // RECHTLICHES
         //--------------------------------------------------

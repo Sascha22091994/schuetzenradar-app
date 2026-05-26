@@ -15,11 +15,17 @@ class MainNavigationScreen extends StatefulWidget {
   @override
   State<MainNavigationScreen> createState() =>
       _MainNavigationScreenState();
+      
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   int _currentIndex = 1;
+  
+  int _usageCount = 0;
+  bool _supportShown = false;
+
+  
 
   //--------------------------------------------------
   // ✅ WEBSITE öffnen
@@ -43,36 +49,61 @@ void _openSupportDialog() {
   showDialog(
     context: context,
     builder: (_) => AlertDialog(
-      title: const Text("💛 Unterstützen"),
-      content: const Text(
-
-
-"SchützenRadar ist ein privates Projekt 🦅\n\n"
-"Wenn sie dir gefällt,\n"
-"freue ich mich über ein Bier 🍺\n\n"
-"oder teile die App gerne mit deinen Freunden 📱\n\n"
-"Danke für deinen Support 🙌"
-
-
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
       ),
+      title: const Text("🍺 Gefällt dir SchützenRadar?"),
+
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+
+          Text(
+            "Mit SchützenRadar findest du schnell die nächsten Feste 🎯",
+          ),
+          SizedBox(height: 12),
+
+          Text(
+            "Die App entsteht komplett in meiner Freizeit 💪",
+          ),
+          SizedBox(height: 12),
+
+          Text(
+            "👉 Wenn sie dir hilft, kannst du mich gerne "
+            "auf ein Bier einladen 🍺",
+          ),
+
+          SizedBox(height: 16),
+
+          // ✅ SOCIAL PROOF
+          Text(
+            "Schon einige Nutzer unterstützen das Projekt 🙌",
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
+
       actions: [
         TextButton(
-          child: const Text("Abbrechen"),
+          child: const Text("Später"),
           onPressed: () => Navigator.pop(context),
         ),
-        TextButton(
-          child: const Text("Prost 🍺"),
+
+        // ✅ HAUPT-AKTION
+        ElevatedButton(
+          child: const Text("🍺 Unterstützen"),
           onPressed: () async {
             Navigator.pop(context);
 
-            // ✅ WEBSITE öffnen
             await _openWebsite();
 
-            // ✅ 🍺 SNACKBAR (danach anzeigen)
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text("🍺 Danke dir! Prost!"),
+                  content: Text(
+                    "💛 Danke dir! Du bist jetzt Supporter 🍺",
+                  ),
                   duration: Duration(seconds: 2),
                 ),
               );
@@ -83,6 +114,7 @@ void _openSupportDialog() {
     ),
   );
 }
+
 
   //--------------------------------------------------
   // ✅ MEHR MENÜ
@@ -201,29 +233,46 @@ void _openSupportDialog() {
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
 
-        onTap: (index) {
+       onTap: (index) {
 
-          //--------------------------------------------------
-          // 🔥 SUPPORT (JETZT MIT DIALOG)
-          //--------------------------------------------------
-          if (index == 3) {
-            _openSupportDialog();
-            return;
-          }
+  //--------------------------------------------------
+  // 🔥 SUPPORT BUTTON
+  //--------------------------------------------------
+  if (index == 3) {
+    _openSupportDialog();
+    return;
+  }
 
-          //--------------------------------------------------
-          // ⋯ MEHR
-          //--------------------------------------------------
-          if (index == 4) {
-            _showMoreMenu();
-            return;
-          }
+  //--------------------------------------------------
+  // ⋯ MEHR
+  //--------------------------------------------------
+  if (index == 4) {
+    _showMoreMenu();
+    return;
+  }
 
-          //--------------------------------------------------
-          // NORMAL NAV
-          //--------------------------------------------------
-          setState(() => _currentIndex = index);
-        },
+  //--------------------------------------------------
+  // NORMAL NAV
+  //--------------------------------------------------
+  setState(() => _currentIndex = index);
+
+  //--------------------------------------------------
+  // ✅ USAGE TRACKING + SMART TRIGGER
+  //--------------------------------------------------
+  _usageCount++;
+
+  if (_usageCount >= 5 && !_supportShown) {
+    _supportShown = true;
+
+    // kleiner Delay → fühlt sich natürlicher an
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) {
+        _openSupportDialog();
+      }
+    });
+  }
+},
+
 
         //--------------------------------------------------
         // ✅ ITEMS
@@ -268,7 +317,7 @@ void _openSupportDialog() {
                 ),
               ],
             ),
-            label: 'Support',
+            label: '💚App unterstützen💚',
           ),
 
           //--------------------------------------------------

@@ -7,22 +7,18 @@ class EmailService {
     String body = _defaultBody,
   }) async {
 
-    final Uri emailUri = Uri(
-      scheme: 'mailto',
-      path: 'info-schuetzenradar@web.de',
-      queryParameters: {
-        'subject': subject,
-        'body': body,
-      },
+    final Uri emailUri = Uri.parse(
+      'mailto:info-schuetzenradar@web.de'
+      '?subject=${Uri.encodeComponent(subject)}'
+      '&body=${Uri.encodeComponent(body)}',
     );
 
     if (await canLaunchUrl(emailUri)) {
       await launchUrl(
         emailUri,
-        mode: LaunchMode.externalApplication, // ✅ FIX
+        mode: LaunchMode.externalApplication,
       );
     } else {
-      // optional: Debug oder Snackbar
       print("Keine Mail-App gefunden");
     }
   }
@@ -30,7 +26,8 @@ class EmailService {
   static const String _defaultBody = '''
 Hallo,
 
-vielen Dank für diese tolle App! Ich habe folgendes Anliegen:
+vielen Dank für die tolle App! 🙌
+Ich habe folgendes Anliegen:
 
 ☐ Fehler melden
 ☐ Änderung vorschlagen
@@ -55,6 +52,6 @@ Weitere Anmerkungen:
 
 --------------------------------------
 
-Vielen Dank für deinen Einsatz und die Weiterentwicklung der App! 🍻
+Vielen Dank für deinen Einsatz und die Weiterentwicklung! 🍻
 ''';
 }
