@@ -2,7 +2,7 @@ name: schuetzenfest_app
 description: "SchützenRadar App"
 publish_to: 'none'
 
-version: 1.0.8+7   # ✅ Version hochziehen für Apple Re-Upload!
+version: 1.0.9+1   # ✅ Version hochziehen für Apple Re-Upload!
 
 environment:
   sdk: ^3.11.1
@@ -10,6 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+
+  flutter_localizations:
+    sdk: flutter   # ✅ HIER HIN
 
   google_maps_flutter: ^2.6.0
   geolocator: ^11.0.0
@@ -20,6 +24,7 @@ dependencies:
   share_plus: ^7.2.1
   firebase_messaging: 15.2.10
   geocoding: ^2.1.0
+  intl: ^0.20.2
 
   cupertino_icons: ^1.0.8
   firebase_crashlytics: ^4.3.10
@@ -31,13 +36,12 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+
   flutter_lints: ^6.0.0
 
   # ✅ DEV TOOLS
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.0
-
-  geocoding: ^2.1.0
   firebase_storage: ^12.4.10
 
 
@@ -82,3 +86,4 @@ flutter:
   assets:
     - assets/icon.png
     - assets/appstore.png
+    - assets/onboarding/

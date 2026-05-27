@@ -16,7 +16,7 @@ class _OnboardingScreenState
   final PageController _controller = PageController();
   int _index = 0;
 
-  static const int _pageCount = 6;
+  static const int _pageCount = 7; // ✅ angepasst
 
   //--------------------------------------------------
   Future<void> _finish() async {
@@ -34,102 +34,30 @@ class _OnboardingScreenState
   }
 
   //--------------------------------------------------
-  // ✅ IMAGE SLIDER
-  //--------------------------------------------------
-  Widget _imageSlider(List<String> images) {
-    return SizedBox(
-      height: 180,
-      child: PageView.builder(
-        itemCount: images.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Image.asset(
-                images[index],
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: Colors.grey.shade300,
-                  child: const Center(
-                    child: Icon(Icons.image, size: 50),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  //--------------------------------------------------
-  Widget _buildPage({
-    required List<String> images,
-    required String title,
-    required String text,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: 24, vertical: 40),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-
-          _imageSlider(images),
-
-          const SizedBox(height: 30),
-
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 15),
-
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  //--------------------------------------------------
-  // ✅ ICON PAGE (für letzte Slide)
+  // ✅ ICON PAGE (STANDARD)
   //--------------------------------------------------
   Widget _buildIconPage({
+    required IconData icon,
     required String title,
     required String text,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: 24, vertical: 40),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
 
-          Wrap(
-            spacing: 20,
-            runSpacing: 20,
-            alignment: WrapAlignment.center,
-            children: [
-              _iconItem(Icons.map),
-              _iconItem(Icons.star),
-              _iconItem(Icons.navigation),
-              _iconItem(Icons.edit),
-              _iconItem(Icons.public),
-              _iconItem(Icons.emoji_events),
-            ],
+          Container(
+            padding: const EdgeInsets.all(30),
+            decoration: BoxDecoration(
+              color: Colors.green.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 60,
+              color: Colors.green.shade700,
+            ),
           ),
 
           const SizedBox(height: 40),
@@ -159,20 +87,78 @@ class _OnboardingScreenState
   }
 
   //--------------------------------------------------
-  Widget _iconItem(IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.green.shade100,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        icon,
-        color: Colors.green.shade700,
-        size: 26,
-      ),
-    );
-  }
+  // ✅ KALENDER PAGE
+  //--------------------------------------------------
+Widget _buildCalendarPage() {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+
+        Icon(
+          Icons.calendar_month,
+          size: 80,
+          color: Colors.green,
+        ),
+
+        const SizedBox(height: 20),
+
+        // Mini Kalender Preview
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: List.generate(3, (row) {
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(7, (col) {
+                  return Container(
+                    margin: const EdgeInsets.all(2),
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: (row == 1 && col == 3)
+                          ? Colors.green
+                          : Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  );
+                }),
+              );
+            }),
+          ),
+        ),
+
+        const SizedBox(height: 40),
+
+        const Text(
+          "Alle Termine im Blick",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        const SizedBox(height: 15),
+
+        const Text(
+          "Plane deine Saison im Kalender und markiere deine Lieblingsfeste 📅⭐",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15,
+            height: 1.4,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 
   //--------------------------------------------------
   Widget _buildDots() {
@@ -227,64 +213,50 @@ class _OnboardingScreenState
                   controller: _controller,
                   onPageChanged: (i) =>
                       setState(() => _index = i),
+
                   children: [
 
-                    _buildPage(
-                      images: [
-                        "assets/onboarding/01_map.jpg",
-                        "assets/onboarding/01_list.png",
-                      ],
-                      title: "Finde alle Schützenfeste",
-                      text:
-                          "Alle Events in deiner Region – als Liste oder auf der Karte 🎯",
-                    ),
+_buildIconPage(
+  icon: Icons.map,
+  title: "Alle Schützenfeste. Eine App.",
+  text: "Finde sofort die besten Feste in deiner Region – auf Karte oder Liste 🎯",
+),
 
-                    _buildPage(
-                      images: [
-                        "assets/onboarding/info.png",
-                      ],
-                      title: "Nie wieder etwas verpassen",
-                      text:
-                          "Speichere Favoriten und navigiere direkt zum Fest 📍",
-                    ),
+_buildIconPage(
+  icon: Icons.notifications,
+  title: "Verpass nie wieder dein Fest",
+  text: "Speichere deine Favoriten und hab sie jederzeit im Blick ⭐",
+),
 
-                    _buildPage(
-                      images: [
-                        "assets/onboarding/03_festmelden.jpg",
-                        "assets/onboarding/03_newsmelden.jpg",
-                      ],
-                      title: "Mach die App besser",
-                      text:
-                          "Trage neue Feste oder News ganz einfach ein ✍️",
-                    ),
+_buildIconPage(
+  icon: Icons.add_circle,
+  title: "Werde Teil der Community",
+  text: "Füge ganz einfach neue Feste oder News hinzu und hilf anderen ✍️",
+),
 
-                    _buildPage(
-                      images: [
-                        "assets/onboarding/05_more.jpg",
-                      ],
-                      title: "Zeig dein Fest",
-                      text:
-                          "Website, Instagram & Highlights direkt sichtbar 🎪",
-                    ),
+_buildIconPage(
+  icon: Icons.public,
+  title: "Dein Fest im Rampenlicht",
+  text: "Zeig dein Fest mit Website, Social Media & Highlights 🎪",
+),
 
-                    _buildPage(
-                      images: [
-                        "assets/onboarding/a04_adler.jpg",
-                        "assets/onboarding/04_schießen.png",
-                      ],
-                      title: "Live dabei sein",
-                      text:
-                          "Adlerschießen in Echtzeit verfolgen 🦅",
-                    ),
 
-                    //--------------------------------------------------
-                    // ✅ ICON SLIDE
-                    //--------------------------------------------------
-                    _buildIconPage(
-                      title: "Und vieles mehr",
-                      text:
-                          "Entdecke ständig neue Features 🎉",
-                    ),
+_buildIconPage(
+  icon: Icons.emoji_events,
+  title: "Adlerschießen – live & interaktiv",
+  text: "Dokumentiere als Moderator jeden Schuss oder verfolge das Geschehen live mit 🦅",
+),
+
+
+
+// Kalender bleibt gleich vom Text leicht optimiert:
+_buildCalendarPage(),
+// Text darin ändern zu:
+_buildIconPage(
+  icon: Icons.star,
+  title: "Und das war erst der Anfang",
+  text: "Freu dich auf ständig neue Features und Updates 🚀",
+),
                   ],
                 ),
               ),
@@ -303,8 +275,7 @@ class _OnboardingScreenState
                         _finish();
                       } else {
                         _controller.nextPage(
-                          duration:
-                              const Duration(milliseconds: 300),
+                          duration: const Duration(milliseconds: 300),
                           curve: Curves.easeInOut,
                         );
                       }

@@ -86,15 +86,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
               context: context,
               showDragHandle: true,
               builder: (context) {
-                final events =
-                    _eventsOfDay(day, festivals);
 
                 if (events.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(20),
                     child: Center(
-                      child:
-                          Text("Keine Events an diesem Tag"),
+                      child: Text("Keine Events an diesem Tag"),
                     ),
                   );
                 }
@@ -102,8 +99,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 return ListView(
                   children: events.map((f) {
                     return ListTile(
-                      leading:
-                          const Icon(Icons.festival),
+                      leading: const Icon(Icons.festival),
                       title: Text(f.name),
                       subtitle: Text(f.address),
                       onTap: () {
@@ -112,9 +108,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (_) =>
-                                FestivalDetailScreen(
-                              festival: f,
-                            ),
+                                FestivalDetailScreen(festival: f),
                           ),
                         );
                       },
@@ -135,6 +129,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ? Colors.grey.shade900
                     : Colors.white),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
 
@@ -158,33 +153,53 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 //--------------------------------------------------
                 // EVENTS
                 //--------------------------------------------------
-                ...events.take(2).map((f) {
-                  final isFav =
-                      FavoriteService.isFavorite(f.id);
 
-                  return Container(
-                    margin:
-                        const EdgeInsets.only(top: 2),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 3, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: isFav
-                          ? Colors.orange
-                          : Colors.green,
-                      borderRadius:
-                          BorderRadius.circular(3),
-                    ),
-                    child: Text(
-                      f.name,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        color: Colors.white,
-                        overflow:
-                            TextOverflow.ellipsis,
-                      ),
-                    ),
-                  );
-                }),
+...events.take(1).map((f) {
+  final isFav = FavoriteService.isFavorite(f.id);
+
+  // ✅ Ort bestimmen
+  String displayText;
+
+  if (f.address.isNotEmpty) {
+    List parts = f.address.split(",");
+
+// meist ist die Stadt im letzten Teil
+String lastPart = parts.isNotEmpty ? parts.last.trim() : "";
+
+// PLZ entfernen → nur Ort behalten
+displayText = lastPart.replaceAll(RegExp(r'\d+'), '').trim();
+
+  } else {
+    displayText = f.name;
+  }
+
+  return Container(
+    margin: const EdgeInsets.only(top: 2),
+    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+    decoration: BoxDecoration(
+      color: isFav ? Colors.orange : Colors.green,
+      borderRadius: BorderRadius.circular(3),
+    ),
+    child: Tooltip(
+
+  message: f.name,
+  child: Text(
+    displayText,
+    maxLines: 2,
+    overflow: TextOverflow.ellipsis,
+    style: const TextStyle(
+      fontSize: 8,
+      height: 1.0,
+      color: Colors.white,
+
+          ),
+          
+    ),
+    ),
+  );
+}),
+
+
 
                 if (events.length > 2)
                   Text(
@@ -256,6 +271,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
           return PageView.builder(
             controller: _pageController,
+            physics: const PageScrollPhysics(),
 
             itemBuilder: (context, index) {
 
@@ -270,27 +286,50 @@ class _CalendarScreenState extends State<CalendarScreen> {
               return Column(
                 children: [
 
-                  //--------------------------------------------------
-                  // MONAT
-                  //--------------------------------------------------
                   Padding(
                     padding:
-                        const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      "${_monthName(month.month)} ${month.year}",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isDark
-                            ? Colors.white
-                            : Colors.black,
-                      ),
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                    child: Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
+                      children: [
+
+                        IconButton(
+                          icon:
+                              const Icon(Icons.arrow_back),
+                          onPressed: () {
+                            _pageController.previousPage(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                          },
+                        ),
+
+                        Text(
+                          "${_monthName(month.month)} ${month.year}",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                        ),
+
+                        IconButton(
+                          icon:
+                              const Icon(Icons.arrow_forward),
+                          onPressed: () {
+                            _pageController.nextPage(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
 
-                  //--------------------------------------------------
-                  // WOCHENTAGE
-                  //--------------------------------------------------
                   Container(
                     color: isDark
                         ? Colors.grey.shade800
@@ -305,11 +344,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           child: Center(
                             child: Text(
                               labels[i],
-                              style: TextStyle(
-                                color: isDark
-                                    ? Colors.white70
-                                    : Colors.black87,
-                              ),
                             ),
                           ),
                         );
@@ -317,9 +351,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   ),
 
-                  //--------------------------------------------------
-                  // GRID
-                  //--------------------------------------------------
                   Expanded(
                     child: GridView.builder(
                       physics:
@@ -328,15 +359,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 7,
-                        childAspectRatio: 1.9,
+                        childAspectRatio: 0.8,
                       ),
                       itemBuilder: (context, i) {
                         return Container(
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: isDark
-                                  ? Colors.grey.shade700
-                                  : Colors.grey.shade300,
                               width: 0.5,
                             ),
                           ),

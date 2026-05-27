@@ -8,27 +8,50 @@ import 'misc_screen.dart';
 import '../main.dart';
 import 'archiv_screen.dart';
 
-
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
 
   @override
   State<MainNavigationScreen> createState() =>
       _MainNavigationScreenState();
-      
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
+class _MainNavigationScreenState extends State<MainNavigationScreen>
+    with SingleTickerProviderStateMixin {
 
   int _currentIndex = 1;
-  
   int _usageCount = 0;
   bool _supportShown = false;
 
-  
-
   //--------------------------------------------------
-  // ✅ WEBSITE öffnen
+  // ❤️ PULSE ANIMATION
+  //--------------------------------------------------
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.12).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
   //--------------------------------------------------
   Future<void> _openWebsite() async {
     final url = Uri.parse(
@@ -43,291 +66,264 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   //--------------------------------------------------
-  // ✅ SUPPORT DIALOG
-  //--------------------------------------------------
-void _openSupportDialog() {
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-      ),
-      title: const Text("🍺 Gefällt dir SchützenRadar?"),
-
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-
-          Text(
-            "Mit SchützenRadar findest du schnell die nächsten Feste 🎯",
+  void _openSupportDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        title: const Text("Gefällt dir SchützenRadar? 💛"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              "Mit SchützenRadar findest du schnell die besten Schützenfeste 🎯",
+            ),
+            SizedBox(height: 12),
+            Text(
+              "Die App wird kontinuierlich weiterentwickelt und verbessert.",
+            ),
+            SizedBox(height: 12),
+            Text(
+              "👉 Wenn du das Projekt unterstützen möchtest, freue ich mich über deinen Support.",
+            ),
+            SizedBox(height: 16),
+            Text(
+              "So hilfst du, neue Features und Updates möglich zu machen 🙌",
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Später"),
+            onPressed: () => Navigator.pop(context),
           ),
-          SizedBox(height: 12),
+          ElevatedButton(
+            child: const Text("Unterstützen 💛"),
+            onPressed: () async {
+              Navigator.pop(context);
+              await _openWebsite();
 
-          Text(
-            "Die App entsteht komplett in meiner Freizeit 💪",
-          ),
-          SizedBox(height: 12),
-
-          Text(
-            "👉 Wenn sie dir hilft, kannst du mich gerne "
-            "auf ein Bier einladen 🍺",
-          ),
-
-          SizedBox(height: 16),
-
-          // ✅ SOCIAL PROOF
-          Text(
-            "Schon einige Nutzer unterstützen das Projekt 🙌",
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("💛 Vielen Dank für deine Unterstützung!"),
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),
+    );
+  }
 
-      actions: [
-        TextButton(
-          child: const Text("Später"),
-          onPressed: () => Navigator.pop(context),
-        ),
-
-        // ✅ HAUPT-AKTION
-        ElevatedButton(
-          child: const Text("🍺 Unterstützen"),
-          onPressed: () async {
-            Navigator.pop(context);
-
-            await _openWebsite();
-
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    "💛 Danke dir! Du bist jetzt Supporter 🍺",
-                  ),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            }
-          },
-        ),
-      ],
-    ),
-  );
-}
-
-
-  //--------------------------------------------------
-  // ✅ MEHR MENÜ
   //--------------------------------------------------
   void _showMoreMenu() {
-  showModalBottomSheet(
-    context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (_) => Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-
-          //--------------------------------------------------
-          // 🌙 / ☀️ THEME SWITCH (OBEN)
-          //--------------------------------------------------
-          ListTile(
-            leading: Icon(
-              themeNotifier.value == ThemeMode.dark
-                  ? Icons.light_mode
-                  : Icons.dark_mode,
-            ),
-            title: Text(
-              themeNotifier.value == ThemeMode.dark
-                  ? "Zu Hell wechseln"
-                  : "Zu Dunkel wechseln",
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              toggleTheme();
-            },
-          ),
-
-          const Divider(),
-
-          //--------------------------------------------------
-          // 📬 KONTAKT
-          //--------------------------------------------------
-          ListTile(
-            leading: const Icon(Icons.contact_mail_outlined),
-            title: const Text("Kontakt"),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ContactScreen(),
-                ),
-              );
-            },
-          ),
-
-          //--------------------------------------------------
-          // 🗂️ ARCHIV
-          //--------------------------------------------------
-          ListTile(
-            leading: const Icon(Icons.archive_outlined),
-            title: const Text("Archiv (Adlerschießen)"),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ArchivScreen(),
-                ),
-              );
-            },
-          ),
-
-          const SizedBox(height: 10),
-        ],
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-    ),
-  );
-}
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
 
-  //--------------------------------------------------
-  // ✅ PAGE SWITCH (FIX für Orte!)
+            ListTile(
+              leading: Icon(
+                themeNotifier.value == ThemeMode.dark
+                    ? Icons.light_mode
+                    : Icons.dark_mode,
+              ),
+              title: Text(
+                themeNotifier.value == ThemeMode.dark
+                    ? "Zu Hell wechseln"
+                    : "Zu Dunkel wechseln",
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                toggleTheme();
+              },
+            ),
+
+            const Divider(),
+
+            ListTile(
+              leading: const Icon(Icons.contact_mail_outlined),
+              title: const Text("Kontakt"),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ContactScreen(),
+                  ),
+                );
+              },
+            ),
+
+            ListTile(
+              leading: const Icon(Icons.archive_outlined),
+              title: const Text("Archiv (Adlerschießen)"),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ArchivScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   //--------------------------------------------------
   Widget _buildPage() {
     switch (_currentIndex) {
-
       case 0:
         return const NewsScreen();
-
       case 1:
-        return const HomeScreen(); // Termine
-
+        return const HomeScreen();
       case 2:
-        return const MiscScreen(); // ✅ ORTE FIX
-
+        return const MiscScreen();
       default:
         return const HomeScreen();
     }
   }
 
   //--------------------------------------------------
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final isActive = _currentIndex == index;
+
+    return InkWell(
+      onTap: () {
+        setState(() => _currentIndex = index);
+
+        _usageCount++;
+        if (_usageCount >= 5 && !_supportShown) {
+          _supportShown = true;
+          Future.delayed(const Duration(milliseconds: 400), () {
+            if (mounted) _openSupportDialog();
+          });
+        }
+      },
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 200),
+        scale: isActive ? 1.2 : 1.0,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isActive
+                  ? const Color(0xFF2E7D32)
+                  : Colors.grey,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: isActive
+                    ? const Color(0xFF2E7D32)
+                    : Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoreButton() {
+    return InkWell(
+      onTap: _showMoreMenu,
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.more_horiz),
+          SizedBox(height: 4),
+          Text("Mehr", style: TextStyle(fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
+  //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      body: Stack(
+        children: [
 
-      //--------------------------------------------------
-      // ✅ BODY
-      //--------------------------------------------------
-      body: _buildPage(),
-
-      //--------------------------------------------------
-      // ✅ NAVIGATION
-      //--------------------------------------------------
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        selectedItemColor: const Color(0xFF2E7D32),
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-
-       onTap: (index) {
-
-  //--------------------------------------------------
-  // 🔥 SUPPORT BUTTON
-  //--------------------------------------------------
-  if (index == 3) {
-    _openSupportDialog();
-    return;
-  }
-
-  //--------------------------------------------------
-  // ⋯ MEHR
-  //--------------------------------------------------
-  if (index == 4) {
-    _showMoreMenu();
-    return;
-  }
-
-  //--------------------------------------------------
-  // NORMAL NAV
-  //--------------------------------------------------
-  setState(() => _currentIndex = index);
-
-  //--------------------------------------------------
-  // ✅ USAGE TRACKING + SMART TRIGGER
-  //--------------------------------------------------
-  _usageCount++;
-
-  if (_usageCount >= 5 && !_supportShown) {
-    _supportShown = true;
-
-    // kleiner Delay → fühlt sich natürlicher an
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) {
-        _openSupportDialog();
-      }
-    });
-  }
-},
-
-
-        //--------------------------------------------------
-        // ✅ ITEMS
-        //--------------------------------------------------
-        items: const [
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.article_outlined),
-            label: 'News',
-          ),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today_outlined),
-            label: 'Termine',
-          ),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Orte',
-          ),
+          _buildPage(),
 
           //--------------------------------------------------
-          // 🔥 SUPPORT
+          // ❤️ PULSIERENDER SUPPORT BUTTON
           //--------------------------------------------------
-          BottomNavigationBarItem(
-            icon: Stack(
-              children: [
-                Icon(Icons.local_fire_department_outlined),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: SizedBox(
-                    width: 8,
-                    height: 8,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            top: (_usageCount >= 2)
+                ? MediaQuery.of(context).padding.top + 10
+                : -80,
+            right: 12,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 300),
+              opacity: (_usageCount >= 2) ? 1 : 0,
+              child: ScaleTransition(
+                scale: _pulseAnimation,
+                child: GestureDetector(
+                  onTap: _openSupportDialog,
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withValues(alpha:0.4),
+                          blurRadius: 12,
+                        )
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.favorite,
+                      color: Colors.white,
+                      size: 20,
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-            label: '💚App unterstützen💚',
-          ),
-
-          //--------------------------------------------------
-          // ⋯ MEHR
-          //--------------------------------------------------
-          BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz),
-            label: 'Mehr',
           ),
         ],
+      ),
+
+      //--------------------------------------------------
+      // ✅ CLEAN NAV
+      //--------------------------------------------------
+      bottomNavigationBar: BottomAppBar(
+        child: SizedBox(
+          height: 65,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(0, Icons.article_outlined, "News"),
+              _buildNavItem(1, Icons.calendar_today_outlined, "Termine"),
+              _buildNavItem(2, Icons.home_outlined, "Orte"),
+              _buildMoreButton(),
+            ],
+          ),
+        ),
       ),
     );
   }

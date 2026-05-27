@@ -11,6 +11,8 @@ class AdlerScreen extends StatefulWidget {
     required this.locationId,
     required this.locationName,
     
+
+    
   });
 
   @override
@@ -18,9 +20,31 @@ class AdlerScreen extends StatefulWidget {
 }
 
 class _AdlerScreenState extends State<AdlerScreen> {
+  List<Map<String, Map<String, dynamic>>> historyStack = [];
   bool showInfo = true;
   final TextEditingController nameController = TextEditingController();
   String selectedEvent = "jung";
+
+void _saveSnapshot() {
+  historyStack.add({
+    "jung": {
+      "shots": eventData["jung"]!["shots"],
+      "kingName": eventData["jung"]!["kingName"],
+      "results": Map<String, dynamic>.from(eventData["jung"]!["results"]),
+      "players": List<String>.from(eventData["jung"]!["players"]),
+    },
+    "alt": {
+      "shots": eventData["alt"]!["shots"],
+      "kingName": eventData["alt"]!["kingName"],
+      "results": Map<String, dynamic>.from(eventData["alt"]!["results"]),
+      "players": List<String>.from(eventData["alt"]!["players"]),
+    },
+  });
+
+  if (historyStack.length > 20) {
+    historyStack.removeAt(0);
+  }
+}
 
   Map<String, Map<String, dynamic>> eventData = {
     "jung": {
@@ -51,6 +75,107 @@ class _AdlerScreenState extends State<AdlerScreen> {
   String _formatTime(DateTime time) {
     return "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
   }
+
+void _editPlayerDialog(String player) {
+  final controller = TextEditingController(text: player);
+
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text("Spieler bearbeiten"),
+      content: TextField(controller: controller),
+      actions: [
+        TextButton(
+          onPressed: () async {
+            setState(() {
+              current['players'].remove(player);
+
+              current['results'].removeWhere(
+                  (key, value) => value['name'] == player);
+            });
+
+            await _saveData();
+            Navigator.pop(context);
+          },
+          child: const Text("Löschen"),
+        ),
+        TextButton(
+          onPressed: () async {
+            final newName = controller.text.trim();
+
+            setState(() {
+              final index = current['players'].indexOf(player);
+              current['players'][index] = newName;
+
+              current['results'].forEach((key, value) {
+                if (value['name'] == player) {
+                  value['name'] = newName;
+                }
+              });
+            });
+
+            await _saveData();
+            Navigator.pop(context);
+          },
+          child: const Text("Speichern"),
+        ),
+      ],
+    ),
+  );
+}
+
+void _editResultDialog(
+    String part, Map<String, dynamic> result) {
+
+  final nameController =
+      TextEditingController(text: result['name']);
+
+  final shotsController =
+      TextEditingController(text: result['shots'].toString());
+
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: Text(part),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(controller: nameController),
+          const SizedBox(height: 10),
+          TextField(
+            controller: shotsController,
+            keyboardType: TextInputType.number,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Abbrechen"),
+        ),
+        TextButton(
+          onPressed: () async {
+            setState(() {
+              current['results'][part] = {
+                ...result,
+                "name": nameController.text,
+                "shots": int.tryParse(shotsController.text) ?? 0,
+              };
+
+              if (part == "Adler 🦅") {
+                current['kingName'] = nameController.text;
+              }
+            });
+
+            await _saveData();
+            Navigator.pop(context);
+          },
+          child: const Text("Speichern"),
+        ),
+      ],
+    ),
+  );
+}
 
   //--------------------------------------------------
   // ✅ LIVE EVENT
@@ -482,282 +607,264 @@ Future<void> _resetGame() async {
   ],
 ),
 
-
 body: Padding(
   padding: const EdgeInsets.all(12),
-  child: Column(
-    children: [
-
-      //--------------------------------------------------
-      // ✅ SCROLLBARER OBERER TEIL
-      //--------------------------------------------------
-     Flexible(
   child: ListView(
-    shrinkWrap: true,
     children: [
 
-
-
-//--------------------------------------------------
-// ℹ️ INFO FÜR PROTOKOLLFÜHRER
-//--------------------------------------------------
-
-if (showInfo)
-  Container(
-    margin: const EdgeInsets.only(top: 8, bottom: 8),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      
-color: isDark
-    ? Colors.blue.shade900
-    : Colors.blue.shade50,
-
-border: Border.all(
-  color: isDark
-      ? Colors.blue.shade700
-      : Colors.blue.shade200,
-),
-
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.info_outline, color: Colors.blue),
-
-        const SizedBox(width: 8),
-
-        Expanded(
-          child: Text(
-            "Hinweis:\n"
-            "Nach 12 Stunden Inaktivität werden die Ergebnisse hier automatisch zurückgesetzt.\n\n"
-            "✅ Alle Daten bleiben im Archiv gespeichert (Siehe unter Bereich 'Orte')\n"
-            "📜 und sind jederzeit für jeden einsehbar.",
-            style: const TextStyle(fontSize: 11),
+      //--------------------------------------------------
+      // INFO
+      //--------------------------------------------------
+      if (showInfo)
+        Container(
+          margin: const EdgeInsets.only(top: 8, bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.blue.shade900 : Colors.blue.shade50,
+            border: Border.all(
+              color: isDark
+                  ? Colors.blue.shade700
+                  : Colors.blue.shade200,
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.blue),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Hinweis:\nNach 12 Stunden wird automatisch zurückgesetzt. Die Ergebnisse landen dann im Adler-Archiv",
+                  style: const TextStyle(fontSize: 11),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(() => showInfo = false),
+                child: const Icon(Icons.close, size: 18),
+              ),
+            ],
           ),
         ),
 
-        //--------------------------------------------------
-        // ❌ CLOSE BUTTON
-        //--------------------------------------------------
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              showInfo = false;
-            });
-          },
-          child: const Icon(Icons.close, size: 18, color: Colors.grey),
+      //--------------------------------------------------
+      // SWITCH
+      //--------------------------------------------------
+      Row(
+        children: [
+          _eventButton("Jungkönig", "jung"),
+          _eventButton("Altkönig", "alt"),
+        ],
+      ),
+
+      const SizedBox(height: 10),
+
+      //--------------------------------------------------
+      // KÖNIG
+      //--------------------------------------------------
+      if (current['kingName'] != null)
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.amber.shade700
+                : Colors.amber.shade300,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            "👑 ${current['kingName']} ist König!",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
         ),
-      ],
-    ),
-  ),
 
+      const SizedBox(height: 10),
 
-            //--------------------------------------------------
-            // SWITCH
-            //--------------------------------------------------
-            Row(
-              children: [
-                _eventButton("Jungkönig", "jung"),
-                _eventButton("Altkönig", "alt"),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-const SizedBox(height: 10),
-
-
-
-
-            //--------------------------------------------------
-            // KÖNIG
-            //--------------------------------------------------
-            if (current['kingName'] != null)
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: isDark
-    ? Colors.amber.shade700
-    : Colors.amber.shade300,
-
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  "👑 ${current['kingName']} ist König!",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
+      //--------------------------------------------------
+      // SPIELER
+      //--------------------------------------------------
+      Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: "Schütze hinzufügen",
               ),
-
-            //--------------------------------------------------
-            // SPIELER
-            //--------------------------------------------------
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: "Schütze hinzufügen",
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(onPressed: _addPlayer, child: const Text("Hinzufügen")),
-              ],
             ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: _addPlayer,
+            child: const Text("Hinzufügen"),
+          ),
+        ],
+      ),
 
-            const SizedBox(height: 10),
+      const SizedBox(height: 10),
 
-            //--------------------------------------------------
-// 🔥 GROSSER SCHUSS BUTTON
+      
 //--------------------------------------------------
-SizedBox(
-  width: double.infinity,
-  height: 60,
-  child: ElevatedButton.icon(
-    icon: const Icon(Icons.add_circle, size: 28),
-    label: const Text(
-      "Schuss hinzufügen",
-      style: TextStyle(fontSize: 18),
-    ),
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Colors.orange,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+// SPIELERLISTE (EDITIERBAR)
+//--------------------------------------------------
+Wrap(
+  spacing: 6,
+  runSpacing: 6,
+  children: players.map((player) {
+    return GestureDetector(
+      onTap: () => _editPlayerDialog(player),
+      child: Chip(
+        label: Text(player),
+        backgroundColor: isDark
+            ? Colors.grey.shade700
+            : Colors.grey.shade200,
       ),
-    ),
-    onPressed: () async {
-      setState(() => current['shots']++);
-      await _saveData();
-    },
-  ),
-),
-            //--------------------------------------------------
-            // SCHUSS COUNTER
-            //--------------------------------------------------
-  Card(
-  color: isDark
-    ? Colors.green.shade900
-    : Colors.green.shade100,
-  child: ListTile(
-    title: Text(
-      "Schüsse: $shots",
-      style: const TextStyle(fontWeight: FontWeight.bold),
-    ),
-  ),
+    );
+  }).toList(),
 ),
 
 
-            if (players.isNotEmpty)
-             SingleChildScrollView(
-  scrollDirection: Axis.horizontal,
-  child: Row(
-    children: players
-        .map((p) => Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: Chip(label: Text(p)),
-            ))
-        .toList(),
-  ),
-),
-
-
-            const SizedBox(height: 10),
-
-      ],
+      //--------------------------------------------------
+      // SCHUSS LEISTE
+      //--------------------------------------------------
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.green.shade700,
+          borderRadius: BorderRadius.circular(12),
         ),
-      ),
-
-            //--------------------------------------------------
-            // PARTS
-            //--------------------------------------------------
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.remove, size: 18),
+              color: Colors.white,
+              onPressed: () async {
+                if (current['shots'] > 0) {
+                  _saveSnapshot();
+                  setState(() => current['shots']--);
+                  await _saveData();
+                }
+              },
+            ),
             Expanded(
-              child: ListView(
-                children: parts.map((part) {
-                  final result = results[part];
-                  final isKingPart = part == "Adler 🦅";
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    color: result != null
-    ? (isDark
-        ? Colors.green.shade900
-        : Colors.green.shade50)
-    : (isDark
-        ? Colors.grey.shade800
-        : Colors.grey.shade100),
-                    child: ListTile(
-                      title: Text(
-                        part,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isKingPart ? Colors.red : Colors.black,
-                        ),
-                      ),
-                      subtitle: result != null
-                          ? Text("${result['name']} • Schuss ${result['shots']} • ${_formatTime(DateTime.parse(result['time']))}")
-                          : null,
-
-                      trailing: result != null
-                          ? Icon(
-                              isKingPart
-                                  ? Icons.emoji_events
-                                  : Icons.check_circle,
-                              color: isKingPart
-                                  ? Colors.amber
-                                  : Colors.green,
-                            )
-                          : DropdownButton<String>(
-                              hint: const Text("Schütze"),
-                              items: players.map((p) =>
-                                  DropdownMenuItem(value: p, child: Text(p)))
-                                  .toList(),
-                              onChanged: players.isEmpty
-                                  ? null
-                                  : (value) async {
-                                      if (value == null) return;
-
-                                      setState(() {
-                                        current['results'][part] = {
-                                          "name": value,
-                                          "shots": current['shots'],
-                                          "time": DateTime.now().toIso8601String(),
-                                          "order": DateTime.now().millisecondsSinceEpoch,
-                                        };
-
-                                        if (isKingPart) {
-                                          current['kingName'] = value;
-                                        }
-                                      });
-
-                                      await _saveData();
-
-                                      await _addLiveUpdate("✅ $part – $value");
-
-                                      if (isKingPart) {
-                                       await _addLiveUpdate(
-  selectedEvent == "alt"
-      ? "👑 Altkönig: $value (${current['shots']} Schuss)"
-      : "👑 Jungkönig: $value (${current['shots']} Schuss)",
-);
-
-                                      }
-                                    },
-                            ),
-                    ),
-                  );
-                }).toList(),
+              child: Center(
+                child: Text(
+                  "Schüsse: $shots",
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add, size: 18),
+              color: Colors.white,
+              onPressed: () async {
+                _saveSnapshot();
+                setState(() => current['shots']++);
+                await _saveData();
+              },
             ),
           ],
         ),
       ),
-    );
-  }
+
+      const SizedBox(height: 10),
+
+      //--------------------------------------------------
+      ...parts.map((part) {
+  final result = results[part];
+  final isKingPart = part == "Adler 🦅";
+
+  return Card(
+    margin: const EdgeInsets.symmetric(vertical: 6),
+    color: result != null
+        ? (isDark
+            ? Colors.green.shade900
+            : Colors.green.shade50)
+        : (isDark
+            ? Colors.grey.shade800
+            : Colors.grey.shade100),
+    child: ListTile(
+      title: Text(
+        part,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: isKingPart ? Colors.red : null,
+        ),
+      ),
+      subtitle: result != null
+          ? Text(
+              "${result['name']} • Schuss ${result['shots']} • ${_formatTime(DateTime.parse(result['time']))}")
+          : null,
+      trailing: result != null
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.orange),
+                  onPressed: () {
+                    _editResultDialog(part, result);
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () async {
+                    _saveSnapshot();
+
+                    setState(() {
+                      current['results'].remove(part);
+                      if (part == "Adler 🦅") {
+                        current['kingName'] = null;
+                      }
+                    });
+
+                    await _saveData();
+                  },
+                ),
+              ],
+            )
+          : DropdownButton<String>(
+              hint: const Text("Schütze"),
+              items: players
+                  .map((p) =>
+                      DropdownMenuItem(value: p, child: Text(p)))
+                  .toList(),
+              onChanged: players.isEmpty
+                  ? null
+                  : (value) async {
+                      if (value == null) return;
+
+                      _saveSnapshot();
+
+                      setState(() {
+                        current['results'][part] = {
+                          "name": value,
+                          "shots": current['shots'],
+                          "time": DateTime.now().toIso8601String(),
+                          "order": DateTime.now().millisecondsSinceEpoch,
+                        };
+
+                        if (part == "Adler 🦅") {
+                          current['kingName'] = value;
+                        }
+                      });
+
+                      await _saveData();
+
+                      await _addLiveUpdate("✅ $part – $value");
+                    },
+            ),
+    ),
+  );
+}).toList(),
+    ],
+  ),
+),
+
+      
+    
+  );
+}
+
+
+
+
 
   //--------------------------------------------------
 Widget _eventButton(String label, String value) {

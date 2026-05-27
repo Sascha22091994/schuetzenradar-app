@@ -8,6 +8,10 @@ import 'services/favorite_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+
+
 
 //--------------------------------------------------
 // ✅ GLOBAL THEME CONTROLLER
@@ -134,6 +138,23 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'SchützenRadar',
+
+  //--------------------------------------------------
+  // ✅ DEUTSCH GLOBAL AKTIVIEREN
+  //--------------------------------------------------
+  locale: const Locale('de', 'DE'),
+
+  supportedLocales: const [
+    Locale('de', 'DE'),
+  ],
+
+localizationsDelegates: [
+  GlobalMaterialLocalizations.delegate,
+  GlobalWidgetsLocalizations.delegate,
+  GlobalCupertinoLocalizations.delegate,
+],
+
+  //------------------------------------------------
 
           themeMode: mode,
           theme: _buildLightTheme(),

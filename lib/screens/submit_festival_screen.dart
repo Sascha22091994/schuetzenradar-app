@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:intl/intl.dart';
 
 class SubmitFestivalScreen extends StatefulWidget {
   const SubmitFestivalScreen({super.key});
@@ -32,12 +33,27 @@ class _SubmitFestivalScreenState extends State<SubmitFestivalScreen> {
   bool _isLoading = false;
 
   //--------------------------------------------------
+  // ✅ DEUTSCHER DATE PICKER
+  //--------------------------------------------------
   Future<void> _pickDate(bool isStart) async {
     final picked = await showDatePicker(
       context: context,
+      locale: const Locale('de', 'DE'),
       initialDate: DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
+
+      // ✅ Design passend zur App
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF2E7D32),
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked == null) return;
@@ -51,8 +67,6 @@ class _SubmitFestivalScreenState extends State<SubmitFestivalScreen> {
     });
   }
 
-  //--------------------------------------------------
-  // 📸 BILD AUSWÄHLEN
   //--------------------------------------------------
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -69,8 +83,6 @@ class _SubmitFestivalScreenState extends State<SubmitFestivalScreen> {
     }
   }
 
-  //--------------------------------------------------
-  // ☁️ UPLOAD
   //--------------------------------------------------
   Future<String?> _uploadImage() async {
     if (_selectedImage == null) return null;
@@ -98,6 +110,7 @@ class _SubmitFestivalScreenState extends State<SubmitFestivalScreen> {
         address.text.isEmpty ||
         startDate == null ||
         endDate == null) {
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Bitte alle Pflichtfelder ausfüllen")),
       );
@@ -171,6 +184,14 @@ class _SubmitFestivalScreenState extends State<SubmitFestivalScreen> {
         ),
       ),
     );
+  }
+
+  //--------------------------------------------------
+  // ✅ DATUM FORMAT
+  //--------------------------------------------------
+  String _formatDate(DateTime? date) {
+    if (date == null) return "";
+    return DateFormat("dd.MM.yyyy", "de_DE").format(date);
   }
 
   //--------------------------------------------------
@@ -249,6 +270,9 @@ class _SubmitFestivalScreenState extends State<SubmitFestivalScreen> {
             ),
           ),
 
+          //------------------------------------------
+          // ✅ ZEITRAUM MIT DEUTSCHER FORMATIERUNG
+          //------------------------------------------
           _sectionTitle("Zeitraum"),
 
           Row(
@@ -260,7 +284,7 @@ class _SubmitFestivalScreenState extends State<SubmitFestivalScreen> {
                   label: Text(
                     startDate == null
                         ? "Start"
-                        : "${startDate!.day}.${startDate!.month}.${startDate!.year}",
+                        : _formatDate(startDate),
                   ),
                 ),
               ),
@@ -272,7 +296,7 @@ class _SubmitFestivalScreenState extends State<SubmitFestivalScreen> {
                   label: Text(
                     endDate == null
                         ? "Ende"
-                        : "${endDate!.day}.${endDate!.month}.${endDate!.year}",
+                        : _formatDate(endDate),
                   ),
                 ),
               ),
@@ -281,9 +305,9 @@ class _SubmitFestivalScreenState extends State<SubmitFestivalScreen> {
 
           const SizedBox(height: 30),
 
-          //--------------------------------------------------
+          //------------------------------------------
           // 📎 IMAGE PICKER
-          //--------------------------------------------------
+          //------------------------------------------
           _sectionTitle("Flyer / Bild"),
 
           GestureDetector(
@@ -301,8 +325,6 @@ class _SubmitFestivalScreenState extends State<SubmitFestivalScreen> {
                         _selectedImage!,
                         fit: BoxFit.cover,
                         width: double.infinity,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.broken_image),
                       ),
                     )
                   : const Center(
@@ -320,9 +342,9 @@ class _SubmitFestivalScreenState extends State<SubmitFestivalScreen> {
 
           const SizedBox(height: 20),
 
-          //--------------------------------------------------
+          //------------------------------------------
           // ✅ SUBMIT BUTTON
-          //--------------------------------------------------
+          //------------------------------------------
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
