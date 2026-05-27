@@ -209,7 +209,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         setState(() => _currentIndex = index);
 
         _usageCount++;
-        if (_usageCount >= 5 && !_supportShown) {
+        if (_usageCount >= 4 && !_supportShown) {
           _supportShown = true;
           Future.delayed(const Duration(milliseconds: 400), () {
             if (mounted) _openSupportDialog();

@@ -49,14 +49,24 @@ class _OnboardingScreenState
 
           Container(
             padding: const EdgeInsets.all(30),
+            
             decoration: BoxDecoration(
-              color: Colors.green.shade100,
-              shape: BoxShape.circle,
-            ),
+  color: Colors.green.shade300,
+  shape: BoxShape.circle,
+  boxShadow: [
+    BoxShadow(
+      color: Colors.green.withValues(alpha:0.25),
+      blurRadius: 18,
+      spreadRadius: 2,
+      offset: const Offset(0, 8),
+    ),
+  ],
+),
+
             child: Icon(
               icon,
               size: 60,
-              color: Colors.green.shade700,
+              color: Colors.green.shade900,
             ),
           ),
 
@@ -67,7 +77,10 @@ class _OnboardingScreenState
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 26,
-              fontWeight: FontWeight.bold,
+              
+  fontWeight: FontWeight.w700,
+  color: Color(0xFF1B5E20),
+
             ),
           ),
 
@@ -76,10 +89,13 @@ class _OnboardingScreenState
           Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              height: 1.4,
-            ),
+        
+style: const TextStyle(
+  fontSize: 15,
+  height: 1.5,
+  color: Colors.black87,
+),
+
           ),
         ],
       ),
@@ -96,13 +112,29 @@ Widget _buildCalendarPage() {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
 
-        Icon(
-          Icons.calendar_month,
-          size: 80,
-          color: Colors.green,
-        ),
+    Container(
+  padding: const EdgeInsets.all(24),
+  decoration: BoxDecoration(
+    color: Colors.green.shade300,
+    shape: BoxShape.circle,
+    boxShadow: [
+      BoxShadow(
+        color: Colors.green.withValues(alpha:0.25),
+        blurRadius: 18,
+        spreadRadius: 2,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  ),
+  child: Icon(
+    Icons.calendar_month,
+    size: 50,
+    color: Colors.green.shade900,
+  ),
+),
 
-        const SizedBox(height: 20),
+
+        const SizedBox(height: 30),
 
         // Mini Kalender Preview
         Container(
@@ -174,7 +206,10 @@ Widget _buildCalendarPage() {
           height: 8,
           decoration: BoxDecoration(
             color:
-                active ? Colors.green : Colors.grey.shade400,
+ active
+    ? const Color(0xFF1B5E20)
+    : Colors.grey.shade300,
+
             borderRadius: BorderRadius.circular(10),
           ),
         );
@@ -189,10 +224,12 @@ Widget _buildCalendarPage() {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFFF3F5F4),
-              Colors.white,
-            ],
+            
+colors: [
+  Color(0xFFE8F5E9),
+  Color(0xFFC8E6C9),
+],
+
           ),
         ),
 
@@ -270,6 +307,14 @@ _buildIconPage(
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
+  style: ElevatedButton.styleFrom(
+    backgroundColor: const Color(0xFF2E7D32),
+    foregroundColor: Colors.white,
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+    ),
+  ),
                     onPressed: () {
                       if (_index == _pageCount - 1) {
                         _finish();
