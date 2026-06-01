@@ -154,63 +154,44 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 // EVENTS
                 //--------------------------------------------------
 
-...events.take(1).map((f) {
+// 👇 NUR DER WICHTIGE TEIL WURDE VERBESSERT
+...events.take(2).map((f) {
   final isFav = FavoriteService.isFavorite(f.id);
-
-  // ✅ Ort bestimmen
-  String displayText;
-
-  if (f.address.isNotEmpty) {
-    List parts = f.address.split(",");
-
-// meist ist die Stadt im letzten Teil
-String lastPart = parts.isNotEmpty ? parts.last.trim() : "";
-
-// PLZ entfernen → nur Ort behalten
-displayText = lastPart.replaceAll(RegExp(r'\d+'), '').trim();
-
-  } else {
-    displayText = f.name;
-  }
 
   return Container(
     margin: const EdgeInsets.only(top: 2),
-    padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
     decoration: BoxDecoration(
       color: isFav ? Colors.orange : Colors.green,
-      borderRadius: BorderRadius.circular(3),
+      borderRadius: BorderRadius.circular(4),
     ),
     child: Tooltip(
-
-  message: f.name,
-  child: Text(
-    displayText,
-    maxLines: 2,
-    overflow: TextOverflow.ellipsis,
-    style: const TextStyle(
-      fontSize: 8,
-      height: 1.0,
-      color: Colors.white,
-
-          ),
-          
-    ),
+      message: f.name,
+      child: Text(
+        f.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 9,
+          color: Colors.white,
+          height: 1.1,
+        ),
+      ),
     ),
   );
 }),
 
 
 
-                if (events.length > 2)
-                  Text(
-                    "+${events.length - 2}",
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: isDark
-                          ? Colors.grey[400]
-                          : Colors.grey,
-                    ),
-                  ),
+
+     if (events.length > 2)
+  Text(
+    "+${events.length - 2}",
+    style: TextStyle(
+      fontSize: 9,
+      color: isDark ? Colors.grey[400] : Colors.grey,
+    ),
+  ),
               ],
             ),
           ),

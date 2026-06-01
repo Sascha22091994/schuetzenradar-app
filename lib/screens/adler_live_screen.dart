@@ -6,6 +6,7 @@ class AdlerLiveScreen extends StatefulWidget {
   final String locationId;
   final String locationName;
   
+  
 
   const AdlerLiveScreen({
     super.key,
@@ -37,6 +38,8 @@ String _formatTime(DateTime t) {
   Timer? _heartbeatTimer;
 
   final Map<String, Map<String, dynamic>> _lastValidData = {};
+bool _chatCleared = false; 
+StreamSubscription? _eventSub;
 
   
 
@@ -67,6 +70,8 @@ String _formatTime(DateTime t) {
     );
 
     _registerViewer();
+      _watchEventEnd(); // ✅ HIER
+      
   }
 
   //--------------------------------------------------
@@ -77,6 +82,8 @@ String _formatTime(DateTime t) {
     _heartbeatTimer?.cancel();
     _pulseController.dispose();
     _commentController.dispose();
+    _eventSub?.cancel();
+
 
     super.dispose();
   }
@@ -104,6 +111,56 @@ String _formatTime(DateTime t) {
     return (jung.data()?['isActive'] == true) ||
         (alt.data()?['isActive'] == true);
   }
+
+
+//CLEAR CHAT
+
+Future<void> _clearChat(String eventType) async {
+  final isLive = await _isLiveActive();
+
+  if (isLive) return; // ✅ nur löschen wenn wirklich vorbei
+
+  final snapshot = await FirebaseFirestore.instance
+      .collection('adler_comments')
+      .doc(widget.locationId)
+      .collection('messages')
+      .get();
+
+  for (final doc in snapshot.docs) {
+    await doc.reference.delete();
+  }
+}
+
+void _watchEventEnd() {
+  _eventSub = FirebaseFirestore.instance
+      .collection('adler_events')
+      .doc(widget.locationId)
+      .collection('events')
+      .snapshots()
+      .listen((snapshot) async {
+
+    bool anyActive = false;
+
+    for (final doc in snapshot.docs) {
+      if (doc.data()['isActive'] == true) {
+        anyActive = true;
+        break;
+      }
+    }
+
+    if (!anyActive && !_chatCleared) {
+      _chatCleared = true;
+
+      await _clearChat("all");
+    }
+
+    if (anyActive) {
+      _chatCleared = false;
+    }
+  });
+}
+
+
 
   //--------------------------------------------------
   // 👀 HEARTBEAT
@@ -194,27 +251,7 @@ await FirebaseFirestore.instance
       body: Column(
         children: [
 
-          //--------------------------------------------------
-          // VIEWER
-          //--------------------------------------------------
-          StreamBuilder(
-            stream: FirebaseFirestore.instance
-                .collection('adler_viewers')
-                .doc(widget.locationId)
-                .collection('users')
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const SizedBox();
-
-              return Padding(
-                padding: const EdgeInsets.all(10),
-                child: Text(
-                  "👀 ${snapshot.data!.docs.length} Zuschauer",
-                  style: const TextStyle(color: Colors.white),
-                ),
-              );
-            },
-          ),
+          
 
           //--------------------------------------------------
           // BUTTONS
@@ -245,6 +282,8 @@ Container(
           //--------------------------------------------------
           // LIVE + CHAT
           //--------------------------------------------------
+          
+          
           Expanded(
             child: Column(
               children: [
@@ -296,9 +335,20 @@ Container(
   // COMMENTS LIST
   //--------------------------------------------------
 Widget _buildComments() {
-  return Container(
-    height: 180,
-    color: Colors.black87,
+final isDark = Theme.of(context).brightness == Brightness.dark;
+
+return Container(
+  height: 110,
+  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+  padding: const EdgeInsets.symmetric(vertical: 6),
+  decoration: BoxDecoration(
+    color: isDark ? Colors.grey.shade900 : Colors.grey.shade200,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(
+      color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+    ),
+  ),
+
     child: StreamBuilder(
       stream: FirebaseFirestore.instance
           .collection('adler_comments')
@@ -322,11 +372,16 @@ Widget _buildComments() {
             return ListTile(
               title: Text(
                 data['text'] ?? '',
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(
+  color: isDark ? Colors.white : Colors.black87,
+),
+
               ),
               subtitle: Text(
                 data['user'] ?? '',
-                style: const TextStyle(color: Colors.grey),
+                style: TextStyle(
+  color: isDark ? Colors.grey : Colors.grey.shade700,
+),
               ),
 
               //----------------------------------
@@ -385,6 +440,87 @@ Widget _buildComments() {
     );
   }
 
+//--------------------------------------------------
+// 👥 TEILNEHMER
+//--------------------------------------------------
+Widget _buildParticipants(String eventType) {
+  return StreamBuilder<DocumentSnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('adler_events')
+        .doc(widget.locationId)
+        .collection('events')
+        .doc(eventType)
+        .snapshots(),
+    builder: (context, snapshot) {
+
+      if (!snapshot.hasData || !snapshot.data!.exists) {
+        return const SizedBox();
+      }
+
+      final data =
+          snapshot.data!.data() as Map<String, dynamic>? ?? {};
+
+      final participants =
+          List<String>.from(data['participants'] ?? []);
+
+      final king = data['kingName'];
+
+      if (participants.isEmpty) {
+        return const SizedBox();
+      }
+
+      participants.sort();
+
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(10, 5, 10, 10),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade900,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+
+            Text(
+              "👥 Teilnehmer (${participants.length})",
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: participants.map((p) {
+
+                final isKing = p == king;
+
+                return Chip(
+                  label: Text(
+                    p,
+                    style: TextStyle(
+                      color: isKing ? Colors.black : Colors.white,
+                      fontWeight:
+                          isKing ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  backgroundColor: isKing
+                      ? Colors.amber
+                      : Colors.green.shade700,
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
   //--------------------------------------------------
   // LIVE
   //--------------------------------------------------
@@ -404,15 +540,19 @@ Widget _buildSingleLive(String eventType) {
         );
       }
 
-      // ✅ Cache System (kein unused warning mehr)
+      //--------------------------------------------------
+      // ✅ CACHE + CHAT CLEAR
+      //--------------------------------------------------
       if (snapshot.hasData && snapshot.data!.exists) {
         final newData = snapshot.data!.data() as Map<String, dynamic>;
 
-        if (newData['isActive'] == true) {
-          _lastValidData[eventType] = newData;
-        } else {
-          _lastValidData.remove(eventType);
-        }
+        final isActive = newData['isActive'] == true;
+if (isActive) {
+  _lastValidData[eventType] = newData;
+} else {
+  _lastValidData.remove(eventType);
+}
+       
       }
 
       final data = _lastValidData[eventType] ?? {};
@@ -420,6 +560,9 @@ Widget _buildSingleLive(String eventType) {
       final shots = data['shots'] ?? 0;
       final king = data['kingName'];
 
+      //--------------------------------------------------
+      // ✅ RESULTS
+      //--------------------------------------------------
       Map<String, dynamic> results = {};
 
       if (data['results'] is Map) {
@@ -433,11 +576,14 @@ Widget _buildSingleLive(String eventType) {
           return bOrder.compareTo(aOrder);
         });
 
+      //--------------------------------------------------
+      // ✅ UI
+      //--------------------------------------------------
       return Column(
         children: [
 
           //--------------------------------------------------
-          // 👑 KÖNIG + PULSE ANIMATION
+          // 👑 KÖNIG
           //--------------------------------------------------
           if (king != null)
             ScaleTransition(
@@ -459,7 +605,7 @@ Widget _buildSingleLive(String eventType) {
             ),
 
           //--------------------------------------------------
-          // 🔢 SCHUSS ANZAHL
+          // 🔢 SCHÜSSE
           //--------------------------------------------------
           Padding(
             padding: const EdgeInsets.all(12),
@@ -470,39 +616,54 @@ Widget _buildSingleLive(String eventType) {
           ),
 
           //--------------------------------------------------
-          // 🏆 RANKING
+          // 🏆 + 👥
           //--------------------------------------------------
           Expanded(
-            child: ListView(
-              children: sorted.map((e) {
+            child: Column(
+              children: [
 
-                final r = e.value;
+                //--------------------------------------------------
+                // 🏆 LISTE
+                //--------------------------------------------------
+                Expanded(
+                  child: ListView(
+                    children: sorted.map((e) {
+                      final r = e.value;
 
-                String time = "--:--";
+                      String time = "--:--";
 
-                final rawTime = r['time'];
+                      final rawTime = r['time'];
 
-                if (rawTime is String) {
-                  time = _formatTime(DateTime.parse(rawTime));
-                } else if (rawTime is Timestamp) {
-                  time = _formatTime(rawTime.toDate());
-                }
+                      if (rawTime is String) {
+                        time = _formatTime(DateTime.parse(rawTime));
+                      } else if (rawTime is Timestamp) {
+                        time = _formatTime(rawTime.toDate());
+                      }
 
-                return ListTile(
-                  title: Text(
-                    e.key,
-                    style: const TextStyle(color: Colors.white),
+                      return ListTile(
+                        title: Text(
+                          e.key,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        subtitle: Text(
+                          "${(r['name'] ?? "-")} • $time",
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        trailing: Text(
+                          "${r['shots']}",
+                          style: const TextStyle(
+                              color: Colors.greenAccent),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                  subtitle: Text(
-                    "${(r['name'] ?? "-")} • $time",
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  trailing: Text(
-                    "${r['shots']}",
-                    style: const TextStyle(color: Colors.greenAccent),
-                  ),
-                );
-              }).toList(),
+                ),
+
+                //--------------------------------------------------
+                // 👥 TEILNEHMER
+                //--------------------------------------------------
+                _buildParticipants(eventType),
+              ],
             ),
           )
         ],

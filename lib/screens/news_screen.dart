@@ -6,6 +6,7 @@ import '../models/news.dart';
 import 'adler_live_screen.dart';
 import '../screens/contact_screen.dart';
 import 'submit_news_screen.dart';
+import '../services/admin_service.dart';
 
 
 class NewsScreen extends StatefulWidget {
@@ -611,19 +612,6 @@ final news = NewsItem.fromMap(data);
 
 return Card(
   margin: const EdgeInsets.only(bottom: 12),
-  elevation: 2,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(14),
-    side: BorderSide(
-      color: Colors.black.withValues(alpha:0.08),
-      width: 1,
-    ),
-  ),
-  color: Theme.of(context).brightness == Brightness.dark
-      ? const Color(0xFF242424)
-      : Colors.white,
-
-
   child: Padding(
     padding: const EdgeInsets.all(14),
     child: Column(
@@ -631,11 +619,11 @@ return Card(
       children: [
 
         //--------------------------------------------------
-        // ✅ TITEL + DATUM
+        // ✅ TITEL + ADMIN BUTTONS
         //--------------------------------------------------
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
             Expanded(
               child: Text(
                 news.title,
@@ -646,70 +634,79 @@ return Card(
               ),
             ),
 
-            const SizedBox(width: 8),
+            //--------------------------------------------------
+            // ✅ ADMIN BUTTONS
+            //--------------------------------------------------
+            if (AdminService.isAdmin) ...[
 
-            Text(
-              _formatDate(news.date),
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.grey,
+              IconButton(
+                icon: const Icon(Icons.edit, size: 20),
+                onPressed: () async {
+
+                  final titleController =
+                      TextEditingController(text: news.title);
+
+                  final textController =
+                      TextEditingController(text: news.text);
+
+                  await showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text("News bearbeiten"),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(controller: titleController),
+                          TextField(controller: textController),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          child: const Text("Speichern"),
+                          onPressed: () async {
+                            await doc.reference.update({
+                              "title": titleController.text,
+                              "text": textController.text,
+                            });
+                            Navigator.pop(context);
+                          },
+                        )
+                      ],
+                    ),
+                  );
+                },
               ),
-            ),
+
+              IconButton(
+                icon: const Icon(Icons.delete, size: 20),
+                onPressed: () async {
+                  await doc.reference.delete();
+                },
+              ),
+            ]
           ],
         ),
 
         const SizedBox(height: 8),
 
-        //--------------------------------------------------
-        // ✅ ORT
-        //--------------------------------------------------
-        if ((data['location'] ?? '').toString().isNotEmpty)
-          Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha:0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              data['location'],
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.green,
-              ),
-            ),
-          ),
-
-        //--------------------------------------------------
-        // ✅ TEXT
-        //--------------------------------------------------
-        Text(
-          news.text,
-          style: const TextStyle(
-            height: 1.4,
-            fontSize: 14,
-          ),
-        ),
+        Text(news.text),
       ],
     ),
   ),
-);
+);  
+}).toList(),
 
-    }).toList(),
+],
+); // ListView
 
+}, // StreamBuilder
 
-  ],
-); // ✅ ListView
+), // StreamBuilder
 
-}, // ✅ StreamBuilder builder
+); // Scaffold
+}
 
-), // ✅ StreamBuilder
-
-); // ✅ Scaffold  ← DAS HAT DIR GEFEHLT
-
-} //
-
+        
 
 
   //--------------------------------------------------

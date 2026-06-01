@@ -204,51 +204,87 @@ void _showAllAreas(BuildContext context, Taxi taxi) {
                 .compareTo(bData['priority'] ?? 99);
           });
 
-          return ListView.builder(
+   return ListView.builder(
             padding: const EdgeInsets.all(12),
-            itemCount: taxis.length,
+            itemCount: taxis.length + 1,
             itemBuilder: (context, index) {
+              //--------------------------------------------------
+              // ✅ INFO BOX (LETZTES ELEMENT)
+              //--------------------------------------------------
+              if (index == taxis.length) {
+                final isDark =
+                    Theme.of(context).brightness == Brightness.dark;
 
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 20, horizontal: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.grey.shade900
+                          : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      children: const [
+                        Icon(Icons.info_outline, color: Colors.blue),
+                        SizedBox(height: 8),
+                        Text(
+                          "Fehlt dein Taxiunternehmen oder bist du Veranstalter und möchtest hier gelistet werden?",
+                          textAlign: TextAlign.center,
+                          style:
+                              TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          "Dann nimm gerne Kontakt mit mir auf 😊",
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              //--------------------------------------------------
+              // ✅ NORMALER TAXI EINTRAG
+              //--------------------------------------------------
               final taxi = taxis[index];
               final visibleAreas = taxi.areas.take(3).toList();
-              final extraCount = taxi.areas.length - visibleAreas.length;
+              final extraCount =
+                  taxi.areas.length - visibleAreas.length;
 
-              final isDark = Theme.of(context).brightness == Brightness.dark;
+              final isDark =
+                  Theme.of(context).brightness == Brightness.dark;
 
-return Card(
-  color: isDark
-      ? Colors.grey.shade900
-      : Colors.white,
+              return Card(
+                color: isDark
+                    ? Colors.grey.shade900
+                    : Colors.white,
                 margin: const EdgeInsets.only(bottom: 10),
                 elevation: 1,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
                   onTap: () => _confirmCall(context, taxi),
-
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
                       children: [
-
-                        const Icon(
-                          Icons.local_taxi,
-                          color: Colors.amber,
-                          size: 28,
-                        ),
-
+                        const Icon(Icons.local_taxi,
+                            color: Colors.amber, size: 28),
                         const SizedBox(width: 12),
 
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
                             children: [
-
                               Text(
                                 taxi.name,
                                 style: const TextStyle(
@@ -256,35 +292,37 @@ return Card(
                                   fontSize: 16,
                                 ),
                               ),
-
                               const SizedBox(height: 6),
 
                               Wrap(
                                 spacing: 6,
                                 runSpacing: 4,
                                 children: [
-
-                                  ...visibleAreas.map((area) => Chip(
+                                  ...visibleAreas.map((area) =>
+                                      Chip(
                                         label: Text(area),
-                                        
-                              backgroundColor: isDark
-                                  ? Colors.grey.shade800
-                                  : Colors.grey.shade200,
-
-                                        labelStyle: const TextStyle(fontSize: 12),
+                                        backgroundColor: isDark
+                                            ? Colors
+                                                .grey.shade800
+                                            : Colors
+                                                .grey.shade200,
+                                        labelStyle:
+                                            const TextStyle(
+                                                fontSize: 12),
                                       )),
-
                                   if (extraCount > 0)
                                     GestureDetector(
-
                                       onTap: () =>
-                                          _showAllAreas(context, taxi),
+                                          _showAllAreas(
+                                              context, taxi),
                                       child: Text(
                                         "+ $extraCount weitere",
-                                        style: const TextStyle(
+                                        style:
+                                            const TextStyle(
                                           fontSize: 12,
                                           color: Colors.blue,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight:
+                                              FontWeight.w600,
                                         ),
                                       ),
                                     ),
@@ -296,7 +334,8 @@ return Card(
                               Text(
                                 "📞 ${taxi.phone}",
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight:
+                                      FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -304,16 +343,17 @@ return Card(
                         ),
 
                         InkWell(
-                          onTap: () => _confirmCall(context, taxi),
-                          borderRadius: BorderRadius.circular(20),
+                          onTap: () =>
+                              _confirmCall(context, taxi),
+                          borderRadius:
+                              BorderRadius.circular(20),
                           child: Container(
-                            padding: const EdgeInsets.all(8),
+                            padding:
+                                const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              
-color: isDark
-    ? Colors.green.shade800
-    : Colors.green.shade100,
-
+                              color: isDark
+                                  ? Colors.green.shade800
+                                  : Colors.green.shade100,
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -333,4 +373,11 @@ color: isDark
       ),
     );
   }
+
+  //--------------------------------------------------
+void showError(BuildContext context, String msg) {
+  ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(msg)));
+}
+
 }

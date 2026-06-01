@@ -219,8 +219,13 @@ if (_sortMode == SortMode.distance && _userPosition != null){
 final activeFestivals =
     filtered.where((f) => !_isPast(f)).toList();
 
+
 final pastFestivals =
-    festivals.where((f) => _isPast(f)).toList();
+    festivals
+        .where((f) => _isPast(f))
+        .where((f) => _userPosition == null || _isWithinRadius(f))
+        .toList();
+
 
         return Scaffold(
           appBar: AppBar(
@@ -284,73 +289,102 @@ body: Column(
     // 🔍 SEARCH + FILTER DROPDOWN
     //--------------------------------------------------
     Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-      child: TextField(
-        onChanged: (value) =>
-            setState(() => _searchQuery = value.toLowerCase()),
-        decoration: InputDecoration(
-          hintText: 'Fest oder Ort suchen...',
-          prefixIcon: const Icon(Icons.search),
+  padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+  child: TextField(
+    onChanged: (value) =>
+        setState(() => _searchQuery = value.toLowerCase()),
+    decoration: InputDecoration(
+      hintText: 'Fest oder Ort suchen...',
+      prefixIcon: const Icon(Icons.search),
 
-          suffixIcon: PopupMenuButton<String>(
-            icon: const Icon(Icons.tune),
+      suffixIcon: PopupMenuButton<String>(
+        icon: const Icon(Icons.tune),
 
-            onSelected: (value) {
-              setState(() {
-                if (value == "date") _sortMode = SortMode.date;
-                if (value == "distance") _sortMode = SortMode.distance;
-                if (value == "radius10") _radiusKm = 10;
-                if (value == "radius25") _radiusKm = 25;
-                if (value == "radius50") _radiusKm = 50;
-              });
-            },
+        onSelected: (value) {
+          setState(() {
+            // ✅ SORTIERUNG
+            if (value == "date") _sortMode = SortMode.date;
+            if (value == "distance") _sortMode = SortMode.distance;
 
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                enabled: false,
-                child: Text("Sortierung"),
-              ),
-              CheckedPopupMenuItem(
-                value: "date",
-                checked: _sortMode == SortMode.date,
-                child: const Text("Datum"),
-              ),
-              CheckedPopupMenuItem(
-                value: "distance",
-                checked: _sortMode == SortMode.distance,
-                child: const Text("Entfernung"),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                enabled: false,
-                child: Text("Umkreis"),
-              ),
-              CheckedPopupMenuItem(
-                value: "radius10",
-                checked: _radiusKm == 10,
-                child: const Text("10 km"),
-              ),
-              CheckedPopupMenuItem(
-                value: "radius25",
-                checked: _radiusKm == 25,
-                child: const Text("25 km"),
-              ),
-              CheckedPopupMenuItem(
-                value: "radius50",
-                checked: _radiusKm == 50,
-                child: const Text("50 km"),
-              ),
-            ],
+            // ✅ RADIUS
+            if (value == "radius10") _radiusKm = 10;
+            if (value == "radius25") _radiusKm = 25;
+            if (value == "radius50") _radiusKm = 50;
+            if (value == "radius100") _radiusKm = 100;
+            if (value == "radius200") _radiusKm = 200;
+            if (value == "radius500") _radiusKm = 500;
+
+            // ✅ UX BOOST
+            if (value.startsWith("radius")) {
+              _sortMode = SortMode.distance;
+            }
+          });
+        },
+
+        itemBuilder: (context) => [
+
+          const PopupMenuItem(
+            enabled: false,
+            child: Text("Sortierung"),
+          ),
+          CheckedPopupMenuItem(
+            value: "date",
+            checked: _sortMode == SortMode.date,
+            child: const Text("Datum"),
+          ),
+          CheckedPopupMenuItem(
+            value: "distance",
+            checked: _sortMode == SortMode.distance,
+            child: const Text("Entfernung"),
           ),
 
-          filled: true,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
+          const PopupMenuDivider(),
+
+          const PopupMenuItem(
+            enabled: false,
+            child: Text("Umkreis"),
           ),
-        ),
+          CheckedPopupMenuItem(
+            value: "radius10",
+            checked: _radiusKm == 10,
+            child: const Text("10 km"),
+          ),
+          CheckedPopupMenuItem(
+            value: "radius25",
+            checked: _radiusKm == 25,
+            child: const Text("25 km"),
+          ),
+          CheckedPopupMenuItem(
+            value: "radius50",
+            checked: _radiusKm == 50,
+            child: const Text("50 km"),
+          ),
+          CheckedPopupMenuItem(
+            value: "radius100",
+            checked: _radiusKm == 100,
+            child: const Text("100 km"),
+          ),
+          CheckedPopupMenuItem(
+            value: "radius200",
+            checked: _radiusKm == 200,
+            child: const Text("200 km"),
+          ),
+          CheckedPopupMenuItem(
+            value: "radius500",
+            checked: _radiusKm == 500,
+            child: const Text("500 km (Deutschlandweit)"),
+          ),
+        ],
+      ),
+
+      filled: true,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
       ),
     ),
+  ),
+),
 
     //--------------------------------------------------
     // ✅ MONATSFILTER (BLEIBT)

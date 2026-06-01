@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/admin_service.dart';
-import 'submission_admin_screen.dart';
 
-
-import 'location_admin_screen.dart';
+// 👉 NEU: Admin Screens
 import 'news_screen.dart';
 import 'home_screen.dart';
+import 'submission_admin_screen.dart';
+import 'location_admin_screen.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
@@ -27,16 +27,17 @@ class AdminDashboardScreen extends StatelessWidget {
   }
 
   //--------------------------------------------------
-  // 🧹 RESET ALL ADLER EVENTS (NEU!)
+  // 🧠 ARCHIV + RESET ADLER EVENTS
   //--------------------------------------------------
   Future<void> _resetAllAdlerEvents(BuildContext context) async {
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Alle Adler Events löschen?"),
+        title: const Text("Events archivieren & zurücksetzen?"),
         content: const Text(
-          "⚠️ Dadurch werden ALLE laufenden Adlerschießen zurückgesetzt.\n\n"
-          "Diese Aktion kann nicht rückgängig gemacht werden.",
+          "⚠️ Alle Adlerschießen werden archiviert und zurückgesetzt.\n\n"
+          "Die Ergebnisse bleiben im Archiv erhalten.",
         ),
         actions: [
           TextButton(
@@ -45,7 +46,7 @@ class AdminDashboardScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("JA, löschen"),
+            child: const Text("JA"),
           ),
         ],
       ),
@@ -55,30 +56,47 @@ class AdminDashboardScreen extends StatelessWidget {
 
     try {
       final db = FirebaseFirestore.instance;
-
-      //--------------------------------------------------
-      // ✅ ALLE ORTE HOLEN
-      //--------------------------------------------------
       final locations = await db.collection('locations').get();
 
       for (final loc in locations.docs) {
+
         final locationId = loc.id;
 
-        for (final eventType in ["jung", "alt"]) {
-          await db
+        for (final type in ['jung', 'alt']) {
+
+          final ref = db
               .collection('adler_events')
               .doc(locationId)
               .collection('events')
-              .doc(eventType)
-              .set({
-            "isActive": false,
-            "shots": 0,
-            "kingName": null,
-            "results": {},
-            "participants": [],
-            "eventType": eventType,
-            "lastUpdate": FieldValue.serverTimestamp(),
-          }, SetOptions(merge: false));
+              .doc(type);
+
+          final snapshot = await ref.get();
+
+          if (snapshot.exists) {
+
+            //--------------------------------------------------
+            // ✅ ARCHIVIEREN
+            //--------------------------------------------------
+            await db.collection('adler_archive').add({
+              "locationId": locationId,
+              "eventType": type,
+              "data": snapshot.data(),
+              "archivedAt": FieldValue.serverTimestamp(),
+            });
+
+            //--------------------------------------------------
+            // ✅ RESET
+            //--------------------------------------------------
+            await ref.set({
+              "isActive": false,
+              "shots": 0,
+              "kingName": null,
+              "results": {},
+              "participants": [],
+              "eventType": type,
+              "lastUpdate": FieldValue.serverTimestamp(),
+            });
+          }
         }
 
         //--------------------------------------------------
@@ -90,7 +108,9 @@ class AdminDashboardScreen extends StatelessWidget {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Alle Adler Events wurden zurückgesetzt")),
+        const SnackBar(
+          content: Text("✅ Events archiviert & zurückgesetzt"),
+        ),
       );
 
     } catch (e) {
@@ -103,6 +123,7 @@ class AdminDashboardScreen extends StatelessWidget {
   //--------------------------------------------------
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Admin Bereich"),
@@ -113,6 +134,7 @@ class AdminDashboardScreen extends StatelessWidget {
           )
         ],
       ),
+
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -128,12 +150,13 @@ class AdminDashboardScreen extends StatelessWidget {
           const SizedBox(height: 10),
 
           //--------------------------------------------------
-          // NEWS
+          // ✅ NEWS (NEU!)
           //--------------------------------------------------
           Card(
             child: ListTile(
               leading: const Icon(Icons.article),
               title: const Text("News verwalten"),
+              subtitle: const Text("Erstellen • Bearbeiten • Löschen"),
               onTap: () {
                 Navigator.push(
                   context,
@@ -146,12 +169,13 @@ class AdminDashboardScreen extends StatelessWidget {
           ),
 
           //--------------------------------------------------
-          // TERMINE
+          // ✅ TERMINE (NEU!)
           //--------------------------------------------------
           Card(
             child: ListTile(
               leading: const Icon(Icons.event),
               title: const Text("Termine verwalten"),
+              subtitle: const Text("Alle Felder bearbeiten"),
               onTap: () {
                 Navigator.push(
                   context,
@@ -164,7 +188,7 @@ class AdminDashboardScreen extends StatelessWidget {
           ),
 
           //--------------------------------------------------
-          // ORTE
+          // ✅ ORTE
           //--------------------------------------------------
           Card(
             child: ListTile(
@@ -181,31 +205,38 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
           ),
 
-Card(
-  child: ListTile(
-    leading: const Icon(Icons.inbox),
-    title: const Text("Einsendungen"),
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const SubmissionAdminScreen(),
-        ),
-      );
-    },
-  ),
-),
           //--------------------------------------------------
-          // 🔴 NEUER BUTTON: RESET
+          // ✅ EINSENDUNGEN
+          //--------------------------------------------------
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.inbox),
+              title: const Text("Einsendungen"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SubmissionAdminScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          //--------------------------------------------------
+          // ✅ RESET / ARCHIV
           //--------------------------------------------------
           const SizedBox(height: 20),
 
           Card(
             color: Colors.red.shade100,
             child: ListTile(
-              leading: const Icon(Icons.delete_forever, color: Colors.red),
-              title: const Text("Alle Adler Events zurücksetzen"),
-              subtitle: const Text("Löscht ALLE laufenden Schießen"),
+              leading: const Icon(
+                Icons.archive,
+                color: Colors.red,
+              ),
+              title: const Text("Events archivieren & zurücksetzen"),
+              subtitle: const Text("Speichert Ergebnisse + startet neu"),
               onTap: () => _resetAllAdlerEvents(context),
             ),
           ),

@@ -19,6 +19,8 @@ class AdlerScreen extends StatefulWidget {
   State<AdlerScreen> createState() => _AdlerScreenState();
 }
 
+
+
 class _AdlerScreenState extends State<AdlerScreen> {
   List<Map<String, Map<String, dynamic>>> historyStack = [];
   bool showInfo = true;
@@ -45,6 +47,51 @@ void _saveSnapshot() {
     historyStack.removeAt(0);
   }
 }
+
+Future<void> _createKingNews({
+  required String name,
+  required int shots,
+}) async {
+
+  final typeText = selectedEvent == "jung" ? "Jungkönig" : "König";
+
+  await FirebaseFirestore.instance.collection('news').add({
+    "title": selectedEvent == "jung"
+        ? "🧒 Jungkönig gefunden!"
+        : "👑 König gefunden!",
+    "text":
+        "👑 $name ist $typeText in ${widget.locationName} mit $shots Schuss",
+    "location": widget.locationName,
+    "date": DateTime.now().toIso8601String(),
+    "isImportant": true,
+    "type": "king",
+  });
+}
+
+Future<bool> _kingAlreadyPosted(String event) async {
+  final doc = await FirebaseFirestore.instance
+      .collection('adler_events')
+      .doc(widget.locationId)
+      .collection('events')
+      .doc(event)
+      .get();
+
+  return (doc.data()?['kingWrittenToNews'] ?? false) == true;
+}
+
+
+Future<void> _setKingPosted(String event) async {
+  await FirebaseFirestore.instance
+      .collection('adler_events')
+      .doc(widget.locationId)
+      .collection('events')
+      .doc(event)
+      .set({
+    "kingWrittenToNews": true
+  }, SetOptions(merge: true));
+}
+
+
 
   Map<String, Map<String, dynamic>> eventData = {
     "jung": {
@@ -355,6 +402,15 @@ Future<void> _archiveCurrentGame() async {
       continue;
     }
 
+await FirebaseFirestore.instance
+    .collection('adler_events')
+    .doc(widget.locationId)
+    .collection('events')
+    .doc(event) // ✅ weil du in einer Schleife bist!
+    .set({
+  "kingWrittenToNews": false,
+}, SetOptions(merge: true));
+
 
 await db.collection('adler_archive').add({
   "locationId": widget.locationId,
@@ -469,6 +525,8 @@ Future<void> _checkInactivityAuto() async {
         "eventType": event,
         "lastUpdate": FieldValue.serverTimestamp(),
         "archived": true,
+        "kingWrittenToNews": false,
+
       }, SetOptions(merge: false));
     }
   }
@@ -820,54 +878,80 @@ Wrap(
               ],
             )
           : DropdownButton<String>(
-              hint: const Text("Schütze"),
-              items: players
-                  .map((p) =>
-                      DropdownMenuItem(value: p, child: Text(p)))
-                  .toList(),
-              onChanged: players.isEmpty
-                  ? null
-                  : (value) async {
-                      if (value == null) return;
+    hint: const Text("Schütze"),
+    items: players
+        .map((p) =>
+            DropdownMenuItem(value: p, child: Text(p)))
+        .toList(),
+    onChanged: players.isEmpty
+        ? null
+        : (value) async {
+            if (value == null) return;
 
-                      _saveSnapshot();
+            _saveSnapshot();
 
-                      setState(() {
-                        current['results'][part] = {
-                          "name": value,
-                          "shots": current['shots'],
-                          "time": DateTime.now().toIso8601String(),
-                          "order": DateTime.now().millisecondsSinceEpoch,
-                        };
+            setState(() {
+              current['results'][part] = {
+                "name": value,
+                "shots": current['shots'],
+                "time": DateTime.now().toIso8601String(),
+                "order": DateTime.now().millisecondsSinceEpoch,
+              };
 
-                        if (part == "Adler 🦅") {
-                          current['kingName'] = value;
-                        }
-                      });
+              if (part == "Adler 🦅") {
+                current['kingName'] = value;
+              }
+            });
 
-                      await _saveData();
+            await _saveData();
 
-                      await _addLiveUpdate("✅ $part – $value");
-                    },
-            ),
-    ),
+            //--------------------------------------------------
+            // ✅ LIVE UPDATE
+            //--------------------------------------------------
+            await _addLiveUpdate("✅ $part – $value");
+
+            //--------------------------------------------------
+            // 🔥 KING LOGIC
+            //--------------------------------------------------
+            if (part == "Adler 🦅") {
+
+              final alreadyPosted = await _kingAlreadyPosted(selectedEvent);
+
+if (!alreadyPosted) {
+  await _createKingNews(
+    name: value,
+    shots: current['shots'],
   );
-}).toList(),
+
+  await _setKingPosted(selectedEvent);
+}
+
+
+              //--------------------------------------------------
+              // 🔴 LIVE STOP
+              //--------------------------------------------------
+              await _stopLiveTicker();
+            }
+          },
+  ), // ✅ GANZ WICHTIG!
+
+),
+  );
+      }
+).toList(),
+
     ],
   ),
 ),
 
-      
-    
-  );
-}
+); // ✅ Scaffold Ende
+
+} // ✅ build() ENDE
 
 
-
-
-
-  //--------------------------------------------------
+//--------------------------------------------------
 Widget _eventButton(String label, String value) {
+
   final isDark = Theme.of(context).brightness == Brightness.dark;
 
   final active = selectedEvent == value;

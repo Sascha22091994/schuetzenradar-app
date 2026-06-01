@@ -6,6 +6,7 @@ class Festival {
   final String address;
   final DateTime startDate;
   final DateTime endDate;
+  final bool isHighlight;
 
   final String music;
   final Map<String, String> musicDays;
@@ -41,6 +42,9 @@ class Festival {
     required this.website,
     required this.images,
     required this.description,
+    this.isHighlight = false,
+
+
 
   });
 
@@ -52,6 +56,9 @@ class Festival {
       id: data['id'] ?? '',
       name: data['name'] ?? '',
       address: data['address'] ?? '',
+      isHighlight: data['isHighlight'] ?? false,
+
+
 
       //--------------------------------------------------
       // ✅ DATE FIX (WICHTIG!)

@@ -8,6 +8,10 @@ import 'misc_screen.dart';
 import '../main.dart';
 import 'archiv_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'adler_live_screen.dart';
+import 'live_view_screen.dart';
+
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -21,6 +25,143 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     with SingleTickerProviderStateMixin {
 
   int _currentIndex = 1;
+late Stream<bool> _liveStatusStream;
+bool _isActive = true;
+
+//--------------------------------------------------
+// ✅ LIVE CHECK GLOBAL
+//--------------------------------------------------
+Stream<bool> _liveStream() async* {
+
+  while (_isActive) {
+
+    final locations =
+        await FirebaseFirestore.instance.collection('locations').get();
+
+    bool hasLive = false;
+
+    for (final doc in locations.docs) {
+      final jung = await FirebaseFirestore.instance
+          .collection('adler_events')
+          .doc(doc.id)
+          .collection('events')
+          .doc('jung')
+          .get();
+
+      final alt = await FirebaseFirestore.instance
+          .collection('adler_events')
+          .doc(doc.id)
+          .collection('events')
+          .doc('alt')
+          .get();
+
+      if (jung.data()?['isActive'] == true ||
+          alt.data()?['isActive'] == true) {
+        hasLive = true;
+        break;
+      }
+    }
+
+    yield hasLive;
+
+    await Future.delayed(const Duration(seconds: 10));
+  }
+}
+
+
+//--------------------------------------------------
+// ✅ LIVE ORT AUSWAHL
+//--------------------------------------------------
+Future<void> _openLiveSelection() async {
+  final locationsSnapshot =
+      await FirebaseFirestore.instance.collection('locations').get();
+
+  // ✅ Status für jeden Ort holen
+  final futures = locationsSnapshot.docs.map((doc) async {
+
+    final jung = await FirebaseFirestore.instance
+        .collection('adler_events')
+        .doc(doc.id)
+        .collection('events')
+        .doc('jung')
+        .get();
+
+    final alt = await FirebaseFirestore.instance
+        .collection('adler_events')
+        .doc(doc.id)
+        .collection('events')
+        .doc('alt')
+        .get();
+
+    final isLive =
+        (jung.data()?['isActive'] == true) ||
+        (alt.data()?['isActive'] == true);
+
+    return MapEntry(doc, isLive);
+  });
+
+  final results = await Future.wait(futures);
+
+  // ✅ Map bauen
+  final map = Map.fromEntries(results);
+
+  // ✅ SORTIERUNG → zuerst LIVE
+  final sorted = [
+    ...map.entries.where((e) => e.value == true),
+    ...map.entries.where((e) => e.value != true),
+  ];
+
+  //--------------------------------------------------
+  // ✅ DIALOG
+  //--------------------------------------------------
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text("Ort auswählen"),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView(
+          children: sorted.map((entry) {
+
+            final doc = entry.key;
+            final isLive = entry.value;
+
+            return ListTile(
+              title: Text(doc['name'] ?? ""),
+
+
+              // 🔥 DAS IST DER WICHTIGE TEIL
+              subtitle: Text(
+                isLive
+                    ? "🔥 Live aktiv"
+                    : "Keine aktuellen Daten",
+              ),
+
+              leading: Icon(
+                Icons.circle,
+                size: 10,
+                color: isLive ? Colors.red : Colors.grey,
+              ),
+
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdlerLiveScreen(
+                      locationId: doc.id,
+                      locationName: doc['name'] ?? "",
+                    ),
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    ),
+  );
+}
 
 
   //--------------------------------------------------
@@ -33,7 +174,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
 void initState() {
   super.initState();
 
-  _maybeShowSupport(); // ✅ JETZT wird es wirklich gestartet
+  _maybeShowSupport();
 
   _pulseController = AnimationController(
     vsync: this,
@@ -46,14 +187,20 @@ void initState() {
       curve: Curves.easeInOut,
     ),
   );
+
+  // ✅ WICHTIG: Stream nur einmal starten
+  _liveStatusStream = _liveStream();
 }
 
 
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
+
+ @override
+void dispose() {
+  _isActive = false;
+  _pulseController.dispose();
+  super.dispose();
+}
+
 
   //--------------------------------------------------
   Future<void> _openWebsite() async {
@@ -223,23 +370,98 @@ ListTile(
   }
 
   //--------------------------------------------------
-  Widget _buildPage() {
-    switch (_currentIndex) {
-      case 0:
-        return const NewsScreen();
-      case 1:
-        return const HomeScreen();
-      case 2:
-        return const MiscScreen();
-      default:
-        return const HomeScreen();
-    }
+
+Widget _buildPage() {
+  switch (_currentIndex) {
+    case 0:
+      return const NewsScreen();
+    case 1:
+      return const HomeScreen();
+    case 2:
+      return const LiveViewScreen(); // ✅ NEU
+    case 3:
+      return const MiscScreen();
+    default:
+      return const HomeScreen();
   }
+}
+
 
   //--------------------------------------------------
+ 
+
  Widget _buildNavItem(int index, IconData icon, String label) {
   final isActive = _currentIndex == index;
 
+  //--------------------------------------------------
+  // 🔴 LIVE SPECIAL
+  //--------------------------------------------------
+  if (index == 2) {
+    return StreamBuilder<bool>(
+      stream: _liveStatusStream,
+      builder: (context, snapshot) {
+        final hasLive = snapshot.data == true;
+
+        return InkWell(
+          onTap: () {
+            setState(() => _currentIndex = index);
+          },
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 200),
+            scale: isActive ? 1.2 : 1.0,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+
+                //--------------------------------------------------
+                // 🔴 ICON (WIRD ROT)
+                //--------------------------------------------------
+                Icon(
+                  icon,
+                  color: hasLive
+                      ? Colors.red // 🔥 LIVE → ROT
+                      : (isActive
+                          ? const Color(0xFF2E7D32)
+                          : Colors.grey),
+                ),
+
+                const SizedBox(height: 4),
+
+                //--------------------------------------------------
+                // 🔴 TEXT BLINKT
+                //--------------------------------------------------
+                hasLive
+                    ? FadeTransition(
+                        opacity: _pulseAnimation, // 🔥 BLINK EFFECT
+                        child: const Text(
+                          "LIVE",
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isActive
+                              ? const Color(0xFF2E7D32)
+                              : Colors.grey,
+                        ),
+                      ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  //--------------------------------------------------
+  // ✅ STANDARD NAV ITEM
+  //--------------------------------------------------
   return InkWell(
     onTap: () {
       setState(() => _currentIndex = index);
@@ -274,7 +496,6 @@ ListTile(
 
 
 
-
   Widget _buildMoreButton() {
     return InkWell(
       onTap: _showMoreMenu,
@@ -290,76 +511,90 @@ ListTile(
   }
 
   //--------------------------------------------------
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      
-  body: Stack(
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+
+    //--------------------------------------------------
+    // ✅ BODY
+    //--------------------------------------------------
+    body: Stack(
+      children: [
+
+        _buildPage(),
+
+Positioned(
+  top: MediaQuery.of(context).padding.top + 12,
+  right: 10, // 👈 weniger am Rand!
+  child: Row(
+    mainAxisSize: MainAxisSize.min,
     children: [
 
-      _buildPage(),
-
-      //--------------------------------------------------
-      // 🍺 SUPPORT BUTTON
-      //--------------------------------------------------
-      AnimatedPositioned(
-        duration: const Duration(milliseconds: 300),
-        top: MediaQuery.of(context).padding.top + 10,
-        right: 12,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 300),
-          opacity: 1,
-          child: ScaleTransition(
-            scale: _pulseAnimation,
-            child: GestureDetector(
-              onTap: _openSupportDialog,
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.orange,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.orange.withValues(alpha: 0.4),
-                          blurRadius: 12,
-                        )
-                      ],
-                    ),
-                    child: const Text("🍺", style: TextStyle(fontSize: 20)),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    "Support",
-                    style: TextStyle(fontSize: 11),
-                  )
-                ],
-              ),
-            ),
-          ),
-        ),
+Positioned(
+  top: MediaQuery.of(context).padding.top + 10,
+  right: 4, // 🔥 noch weiter nach rechts (fast am Rand)
+  child: GestureDetector(
+    onTap: _openSupportDialog,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16, // 🔥 breiter
+        vertical: 12,   // 🔥 höher
       ),
-
-    ],
-  ),
-
-  //--------------------------------------------------
-  // ✅ HIER MUSS DAS HIN!
-  //--------------------------------------------------
-  bottomNavigationBar: BottomAppBar(
-    child: SizedBox(
-      height: 65,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(0, Icons.article_outlined, "News"),
-          _buildNavItem(1, Icons.calendar_today_outlined, "Termine"),
-          _buildNavItem(2, Icons.home_outlined, "Orte"),
-          _buildMoreButton(),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.orange.shade400,
+            Colors.deepOrange,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(26), // etwas runder
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withValues(alpha: 0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
         ],
+      ),
+      child: const Text(
+        "🍺 Support",
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 15, // 🔥 größer
+        ),
       ),
     ),
   ),
-);
-  }}
+),
+
+
+    ],
+  ),
+),
+
+      ],
+    ),
+
+    //--------------------------------------------------
+    // ✅ NAV BAR
+    //--------------------------------------------------
+    bottomNavigationBar: BottomAppBar(
+      child: SizedBox(
+        height: 65,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildNavItem(0, Icons.article_outlined, "News"),
+            _buildNavItem(1, Icons.calendar_today_outlined, "Termine"),
+            _buildNavItem(2, Icons.visibility, "Live"),
+            _buildNavItem(3, Icons.home_outlined, "Orte"),
+            _buildMoreButton(),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+    }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/email_service.dart';
 import 'adler_screen.dart';
+import 'adler_live_screen.dart';
 
 class AdlerLoginScreen extends StatefulWidget {
   final String locationId;
@@ -16,6 +17,7 @@ class AdlerLoginScreen extends StatefulWidget {
   @override
   State<AdlerLoginScreen> createState() => _AdlerLoginScreenState();
 }
+
 
 class _AdlerLoginScreenState extends State<AdlerLoginScreen> {
 
@@ -54,6 +56,76 @@ class _AdlerLoginScreenState extends State<AdlerLoginScreen> {
 
     setState(() => loading = false);
   }
+
+  Future<void> _openLiveSelection() async {
+  final locationsSnapshot =
+      await FirebaseFirestore.instance.collection('locations').get();
+
+  final futures = locationsSnapshot.docs.map((doc) async {
+    final jung = await FirebaseFirestore.instance
+        .collection('adler_events')
+        .doc(doc.id)
+        .collection('events')
+        .doc('jung')
+        .get();
+
+    final alt = await FirebaseFirestore.instance
+        .collection('adler_events')
+        .doc(doc.id)
+        .collection('events')
+        .doc('alt')
+        .get();
+
+    final isLive = (jung.data()?['isActive'] == true) ||
+        (alt.data()?['isActive'] == true);
+
+    return MapEntry(doc, isLive);
+  });
+
+  final results = await Future.wait(futures);
+
+  final sorted = [
+    ...results.where((e) => e.value),
+    ...results.where((e) => !e.value),
+  ];
+
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text("Ort auswählen"),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView(
+          children: sorted.map((entry) {
+            final doc = entry.key;
+            final isLive = entry.value;
+
+            return ListTile(
+              title: Text(doc['name'] ?? ""),
+              subtitle: Text(
+                isLive ? "🔥 Live aktiv" : "Keine aktuellen Daten",
+              ),
+              onTap: () {
+                Navigator.pop(context);
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdlerLiveScreen(
+                      locationId: doc.id,
+                      locationName: doc['name'] ?? "",
+                    ),
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    ),
+  );
+}
+
 
   //--------------------------------------------------
   void _requestAccess() {
@@ -193,7 +265,7 @@ class _AdlerLoginScreenState extends State<AdlerLoginScreen> {
 
               const SizedBox(height: 12),
 
-              //--------------------------------------------------
+                        //--------------------------------------------------
               // BUTTON
               //--------------------------------------------------
               ElevatedButton.icon(
@@ -204,17 +276,140 @@ class _AdlerLoginScreenState extends State<AdlerLoginScreen> {
 
               const SizedBox(height: 10),
 
+//--------------------------------------------------
+// 👀 ZUSCHAUER INFO (NEU)
+//--------------------------------------------------
+Container(
+  padding: const EdgeInsets.all(14),
+  decoration: BoxDecoration(
+    color: Colors.blue.withValues(alpha: 0.15),
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(
+      color: Colors.blue.withValues(alpha: 0.4),
+      width: 1,
+    ),
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.center, // ✅ geändert!
+    children: [
+
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center, // ✅ Zentriert Icon + Titel
+        children: const [
+          Icon(Icons.visibility, color: Colors.blue),
+          SizedBox(width: 6),
+          Text(
+            "Zuschauer?",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 8),
+
+      const Text(
+        "👉 Du willst das Adlerschießen nur verfolgen?\n\n"
+        "Kein Login nötig!\n\n"
+        "➡️ Tippe unten in der Navigationsleiste auf den „Live“ Button und sieh dir alle aktuell laufenden Adlerschießen an.",
+        textAlign: TextAlign.center, // ✅ GANZ WICHTIG!
+      ),
+    ],
+  ),
+),
+
+const SizedBox(height: 12),
+
+//--------------------------------------------------
+// 🔴 LIVE CALL TO ACTION
+//--------------------------------------------------
+Container(
+  padding: const EdgeInsets.all(16),
+  decoration: BoxDecoration(
+    gradient: LinearGradient(
+      colors: [
+        Colors.red.shade400,
+        Colors.red.shade600,
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    borderRadius: BorderRadius.circular(14),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.2),
+        blurRadius: 6,
+        offset: const Offset(0, 3),
+      ),
+    ],
+  ),
+
+  child: Column(
+    children: [
+
+      //--------------------------------------------------
+      // 🔴 TEXT
+      //--------------------------------------------------
+      const Text(
+        "🔴 LIVE ADLERSCHIESSEN",
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Colors.white,
+        ),
+      ),
+
+      const SizedBox(height: 6),
+
+      const Text(
+        "Ohne Login zuschauen!\nAlle aktuellen Adlerschießen live verfolgen.",
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white,
+        ),
+      ),
+
+      const SizedBox(height: 12),
+
+      //--------------------------------------------------
+      // ▶ BUTTON
+      //--------------------------------------------------
+   
+
+
+
+ElevatedButton.icon(
+  onPressed: () async {
+    await _openLiveSelection();
+  },
+  icon: const Icon(Icons.play_arrow),
+  label: const Text("LIVE ansehen"),
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.white,
+    foregroundColor: Colors.red,
+    padding: const EdgeInsets.symmetric(
+      horizontal: 20,
+      vertical: 10,
+    ),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    ),
+  ),
+),
+
+    ],
+  ),
+),
+
+
+
               //--------------------------------------------------
               // HINWEIS
               //--------------------------------------------------
-              Text(
-                "👉 Du bist Besucher? Dann nutze den Live-Bereich zur Ansicht.",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: theme.colorScheme.onSurface..withValues(alpha:0.7),
-                ),
-              ),
+              
             ],
           ),
         ),
