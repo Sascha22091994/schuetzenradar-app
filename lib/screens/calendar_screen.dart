@@ -19,6 +19,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _baseMonth = DateTime.now();
   bool _onlyFavorites = false;
 
+String _stripName(String name) {
+  String cleaned = name.toLowerCase()
+      .replaceAll("schützenfest", "")
+      .replaceAll("schutzenfest", "")
+      .replaceAll("großes", "")
+      .replaceAll("grosses", "")
+      .replaceAll("traditionelles", "")
+      .replaceAll("traditionell", "")
+      .trim();
+
+  if (cleaned.isEmpty) return name;
+
+  // ersten Buchstaben wieder groß
+  return cleaned[0].toUpperCase() + cleaned.substring(1);
+}
   //--------------------------------------------------
   String _monthName(int month) {
     const names = [
@@ -59,44 +74,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   //--------------------------------------------------
-  List<Widget> _buildCalendar(
-      DateTime month,
-      List<Festival> festivals,
-      bool isDark) {
+ 
 
-    final firstDay = DateTime(month.year, month.month, 1);
-    final offset = (firstDay.weekday + 6) % 7;
-    final daysInMonth =
-        DateTime(month.year, month.month + 1, 0).day;
 
-    final List<Widget> days = [];
+List<Widget> _buildCalendar(
+    DateTime month,
+    List<Festival> festivals,
+    bool isDark) {
 
-    for (int i = 0; i < offset; i++) {
-      days.add(const SizedBox());
-    }
+  final firstDay = DateTime(month.year, month.month, 1);
+  final offset = (firstDay.weekday + 6) % 7;
+  final daysInMonth =
+      DateTime(month.year, month.month + 1, 0).day;
 
-    for (int i = 0; i < daysInMonth; i++) {
-      final day = DateTime(month.year, month.month, i + 1);
-      final events = _eventsOfDay(day, festivals);
+  final List<Widget> days = [];
 
-      days.add(
-        GestureDetector(
-          onTap: () {
-            showModalBottomSheet(
-              context: context,
-              showDragHandle: true,
-              builder: (context) {
+  // Leere Felder am Anfang
+  for (int i = 0; i < offset; i++) {
+    days.add(const SizedBox());
+  }
 
-                if (events.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Center(
-                      child: Text("Keine Events an diesem Tag"),
-                    ),
-                  );
-                }
+  for (int i = 0; i < daysInMonth; i++) {
+    final day = DateTime(month.year, month.month, i + 1);
+    final events = _eventsOfDay(day, festivals);
 
-                return ListView(
+    days.add(
+      GestureDetector(
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            showDragHandle: true,
+            builder: (context) {
+
+              if (events.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Center(
+                    child: Text("Keine Events an diesem Tag"),
+                  ),
+                );
+              }
+
+              return SafeArea(
+                child: ListView(
                   children: events.map((f) {
                     return ListTile(
                       leading: const Icon(Icons.festival),
@@ -114,97 +134,154 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       },
                     );
                   }).toList(),
-                );
-              },
-            );
-          },
-
-          child: Container(
-            padding: const EdgeInsets.all(4),
-            color: _isToday(day)
-                ? (isDark
-                    ? Colors.green.shade900
-                    : Colors.green.shade50)
-                : (isDark
-                    ? Colors.grey.shade900
-                    : Colors.white),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-
-                //--------------------------------------------------
-                // TAG
-                //--------------------------------------------------
-                Text(
-                  "${day.day}",
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: _isToday(day)
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color:
-                        isDark ? Colors.white : Colors.black,
-                  ),
                 ),
+              );
+            },
+          );
+        },
 
-                const SizedBox(height: 2),
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          color: _isToday(day)
+              ? (isDark
+                  ? Colors.green.shade900
+                  : Colors.green.shade50)
+              : (isDark
+                  ? Colors.grey.shade900
+                  : Colors.white),
 
-                //--------------------------------------------------
-                // EVENTS
-                //--------------------------------------------------
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
 
-// 👇 NUR DER WICHTIGE TEIL WURDE VERBESSERT
-...events.take(2).map((f) {
-  final isFav = FavoriteService.isFavorite(f.id);
+              // TAG
+              Text(
+                "${day.day}",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: _isToday(day)
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
 
-  return Container(
-    margin: const EdgeInsets.only(top: 2),
-    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-    decoration: BoxDecoration(
-      color: isFav ? Colors.orange : Colors.green,
-      borderRadius: BorderRadius.circular(4),
-    ),
-    child: Tooltip(
-      message: f.name,
-      child: Text(
-        f.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontSize: 9,
-          color: Colors.white,
-          height: 1.1,
-        ),
-      ),
-    ),
-  );
-}),
+              const SizedBox(height: 2),
 
+              // EVENTS (kein Overflow mehr!)
+             
+Expanded(
+  child: LayoutBuilder(
+    builder: (context, constraints) {
 
+      final maxHeight = constraints.maxHeight;
 
+      //--------------------------------------------------
+      // ❗ FALL 1: EXTREM KLEIN → NUR ZAHLEN
+      //--------------------------------------------------
+      if (maxHeight < 14) {
+        return const SizedBox(); // nichts anzeigen
+      }
 
-     if (events.length > 2)
-  Text(
-    "+${events.length - 2}",
-    style: TextStyle(
-      fontSize: 9,
-      color: isDark ? Colors.grey[400] : Colors.grey,
-    ),
-  ),
-              ],
+      //--------------------------------------------------
+      // ❗ FALL 2: KLEIN → NUR "+X" ODER 1 EVENT
+      //--------------------------------------------------
+      if (maxHeight < 30) {
+        if (events.isEmpty) return const SizedBox();
+
+        if (events.length == 1) {
+          return Text(
+            _stripName(events.first.name),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 8,
+              color: isDark ? Colors.white : Colors.black,
             ),
+          );
+        }
+
+        return Text(
+          "+${events.length}",
+          style: TextStyle(
+            fontSize: 8,
+            color: isDark ? Colors.grey[400] : Colors.grey,
+          ),
+        );
+      }
+
+      //--------------------------------------------------
+      // ✅ FALL 3: NORMAL / GROẞ → EVENTS ANZEIGEN
+      //--------------------------------------------------
+      int maxItems = maxHeight > 60 ? 2 : 1;
+
+      final visibleEvents = events.take(maxItems).toList();
+      final remaining = events.length - visibleEvents.length;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+
+          ...visibleEvents.map((f) {
+            final isFav =
+                FavoriteService.isFavorite(f.id);
+
+            return Container(
+              margin: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4,
+                vertical: 1,
+              ),
+              decoration: BoxDecoration(
+                color: isFav
+                    ? Colors.orange
+                    : Colors.green,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                _stripName(f.name),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 8.5,
+                  color: Colors.white,
+                ),
+              ),
+            );
+          }),
+
+          if (remaining > 0)
+            Text(
+              "+$remaining",
+              style: TextStyle(
+                fontSize: 8,
+                color: isDark
+                    ? Colors.grey[400]
+                    : Colors.grey,
+              ),
+            ),
+        ],
+      );
+    },
+  ),
+),
+             
+            ],
           ),
         ),
-      );
-    }
-
-    while (days.length < 42) {
-      days.add(const SizedBox());
-    }
-
-    return days;
+      ),
+    );
   }
+
+  // Auffüllen bis 6 Wochen
+  while (days.length < 42) {
+    days.add(const SizedBox());
+  }
+
+  return days;
+}
+
 
   //--------------------------------------------------
   @override
@@ -340,7 +417,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 7,
-                        childAspectRatio: 0.8,
+                        childAspectRatio: 1.6,
                       ),
                       itemBuilder: (context, i) {
                         return Container(

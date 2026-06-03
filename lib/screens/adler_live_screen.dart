@@ -18,10 +18,16 @@ class AdlerLiveScreen extends StatefulWidget {
 
   @override
   State<AdlerLiveScreen> createState() => _AdlerLiveScreenState();
+
 }
 
 class _AdlerLiveScreenState extends State<AdlerLiveScreen>
     with SingleTickerProviderStateMixin {
+
+  bool _chatOpen = true; 
+  int _lastMessageCount = 0;
+bool _hasNewMessages = false;  
+bool _participantsOpen = false;   
 String _formatTime(DateTime t) {
   return "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}";
 }
@@ -231,6 +237,7 @@ await FirebaseFirestore.instance
   "user": _username,
   "userId": viewerId, // ✅ WICHTIG!
   "createdAt": FieldValue.serverTimestamp(),
+    "likes": 0,
 });
 
 
@@ -334,72 +341,197 @@ Container(
   //--------------------------------------------------
   // COMMENTS LIST
   //--------------------------------------------------
+
 Widget _buildComments() {
-final isDark = Theme.of(context).brightness == Brightness.dark;
+  final isDark = Theme.of(context).brightness == Brightness.dark;
 
-return Container(
-  height: 110,
-  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-  padding: const EdgeInsets.symmetric(vertical: 6),
-  decoration: BoxDecoration(
-    color: isDark ? Colors.grey.shade900 : Colors.grey.shade200,
-    borderRadius: BorderRadius.circular(12),
-    border: Border.all(
-      color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: isDark ? Colors.grey.shade900 : Colors.grey.shade200,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+      ),
     ),
-  ),
+    child: Column(
+      children: [
 
-    child: StreamBuilder(
-      stream: FirebaseFirestore.instance
-          .collection('adler_comments')
-          .doc(widget.locationId)
-          .collection('messages')
-          .orderBy('createdAt', descending: true)
-          .limit(50)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox();
+        //--------------------------------------------------
+        // ✅ HEADER
+        //--------------------------------------------------
+        InkWell(
+          onTap: () {
+            setState(() {
+              _chatOpen = !_chatOpen;
+              _hasNewMessages = false;
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              children: [
+                const Text(
+                  "💬 Chat",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
 
-        final docs = snapshot.data!.docs;
+                if (!_chatOpen && _hasNewMessages)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      "NEU",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
 
-        return ListView(
-          reverse: true,
-          children: docs.map((doc) {
+                const Spacer(),
 
-            final data = doc.data();
-            final isMine = data['userId'] == viewerId; // ✅ CHECK
+                Icon(_chatOpen
+                    ? Icons.expand_less
+                    : Icons.expand_more),
+              ],
+            ),
+          ),
+        ),
 
-            return ListTile(
-              title: Text(
-                data['text'] ?? '',
-                style: TextStyle(
-  color: isDark ? Colors.white : Colors.black87,
-),
+        //--------------------------------------------------
+        // ✅ CHAT
+        //--------------------------------------------------
+        if (_chatOpen)
+          SizedBox(
+            height: 100,
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('adler_comments')
+                  .doc(widget.locationId)
+                  .collection('messages')
+                  .orderBy('createdAt', descending: true)
+                  .limit(50)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox();
+                }
 
-              ),
-              subtitle: Text(
-                data['user'] ?? '',
-                style: TextStyle(
-  color: isDark ? Colors.grey : Colors.grey.shade700,
-),
-              ),
+                final docs = snapshot.data!.docs;
 
-              //----------------------------------
-              // 🗑️ DELETE BUTTON (NUR DU)
-              //----------------------------------
-              trailing: isMine
-                  ? IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () async {
-                        await doc.reference.delete();
-                      },
-                    )
-                  : null,
-            );
+if (docs.length > _lastMessageCount) {
+  if (!_chatOpen) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _hasNewMessages = true;
+      });
+    });
+  }
+}
+_lastMessageCount = docs.length;
 
-          }).toList(),
-        );
-      },
+               
+
+                return ListView(
+                  reverse: true,
+                  children: docs.map((doc) {
+
+                    final data =
+                        doc.data() as Map<String, dynamic>;
+                    final isMine =
+                        data['userId'] == viewerId;
+
+                    return Align(
+                      alignment: isMine
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 3, horizontal: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isMine
+                              ? Colors.green
+                              : (isDark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade300),
+                          borderRadius:
+                              BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          children: [
+
+                            Text(
+                              data['text'] ?? '',
+                              style: TextStyle(
+                                color: isMine
+                                    ? Colors.white
+                                    : Colors.black,
+                                fontSize: 13,
+                              ),
+                            ),
+
+                            const SizedBox(height: 2),
+
+                            Text(
+                              data['user'] ?? '',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: isMine
+                                    ? Colors.white70
+                                    : Colors.grey,
+                              ),
+                            ),
+
+                            const SizedBox(height: 4),
+
+                            Row(
+                              mainAxisSize:
+                                  MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: () async {
+                                    await doc.reference
+                                        .update({
+                                      "likes":
+                                          FieldValue.increment(1),
+                                    });
+                                  },
+                                  child: const Icon(
+                                    Icons.favorite_border,
+                                    size: 14,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "${data['likes'] ?? 0}",
+                                  style: const TextStyle(
+                                      fontSize: 10),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+
+                  }).toList(),
+                );
+              },
+            ),
+          ),
+      ],
     ),
   );
 }
@@ -443,6 +575,7 @@ return Container(
 //--------------------------------------------------
 // 👥 TEILNEHMER
 //--------------------------------------------------
+
 Widget _buildParticipants(String eventType) {
   return StreamBuilder<DocumentSnapshot>(
     stream: FirebaseFirestore.instance
@@ -465,62 +598,98 @@ Widget _buildParticipants(String eventType) {
 
       final king = data['kingName'];
 
-      if (participants.isEmpty) {
-        return const SizedBox();
-      }
+      if (participants.isEmpty) return const SizedBox();
 
-      participants.sort();
-
-      return Container(
-        width: double.infinity,
-        margin: const EdgeInsets.fromLTRB(10, 5, 10, 10),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade900,
-          borderRadius: BorderRadius.circular(12),
-        ),
+      return AnimatedContainer(
+  duration: const Duration(milliseconds: 200),
+  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+  decoration: BoxDecoration(
+    color: Colors.grey.shade900,
+    borderRadius: BorderRadius.circular(10),
+  ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  mainAxisSize: MainAxisSize.min,
+
           children: [
 
-            Text(
-              "👥 Teilnehmer (${participants.length})",
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+            //--------------------------------------------------
+            // ✅ HEADER (EINKLAPPBAR)
+            //--------------------------------------------------
+            InkWell(
+              onTap: () {
+                setState(() => _participantsOpen = !_participantsOpen);
+              },
+              child: Row(
+                children: [
+
+                  Text(
+                    "👥 Teilnehmer: ${participants.length}",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  Icon(
+                    _participantsOpen
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                    color: Colors.white54,
+                  ),
+                ],
               ),
             ),
 
-            const SizedBox(height: 6),
+            //--------------------------------------------------
+            // ✅ INHALT NUR WENN OFFEN
+            //--------------------------------------------------
+            if (_participantsOpen)
+              SizedBox(
+                height: 40, // 🔥 extrem kompakt
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: participants.map((p) {
 
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: participants.map((p) {
+                    final isKing = p == king;
 
-                final isKing = p == king;
+                    return Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isKing
+                            ? Colors.amber
+                            : Colors.green,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        p,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isKing
+                              ? Colors.black
+                              : Colors.white,
+                          fontWeight: isKing
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    );
 
-                return Chip(
-                  label: Text(
-                    p,
-                    style: TextStyle(
-                      color: isKing ? Colors.black : Colors.white,
-                      fontWeight:
-                          isKing ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                  backgroundColor: isKing
-                      ? Colors.amber
-                      : Colors.green.shade700,
-                );
-              }).toList(),
-            ),
+                  }).toList(),
+                ),
+              ),
           ],
         ),
       );
     },
   );
 }
+
+
   //--------------------------------------------------
   // LIVE
   //--------------------------------------------------
@@ -615,6 +784,8 @@ if (isActive) {
             ),
           ),
 
+// 👉 NEU HIER:
+_buildParticipants(eventType),
           //--------------------------------------------------
           // 🏆 + 👥
           //--------------------------------------------------
@@ -662,7 +833,7 @@ if (isActive) {
                 //--------------------------------------------------
                 // 👥 TEILNEHMER
                 //--------------------------------------------------
-                _buildParticipants(eventType),
+              
               ],
             ),
           )

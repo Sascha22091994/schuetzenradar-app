@@ -518,64 +518,54 @@ Widget build(BuildContext context) {
     //--------------------------------------------------
     // ✅ BODY
     //--------------------------------------------------
-    body: Stack(
-      children: [
 
-        _buildPage(),
 
-Positioned(
-  top: MediaQuery.of(context).padding.top + 12,
-  right: 10, // 👈 weniger am Rand!
-  child: Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
+body: Stack(
+  children: [
 
-Positioned(
-  top: MediaQuery.of(context).padding.top + 10,
-  right: 4, // 🔥 noch weiter nach rechts (fast am Rand)
-  child: GestureDetector(
-    onTap: _openSupportDialog,
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16, // 🔥 breiter
-        vertical: 12,   // 🔥 höher
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.orange.shade400,
-            Colors.deepOrange,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(26), // etwas runder
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withValues(alpha: 0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+    _buildPage(),
+
+    Positioned(
+      top: MediaQuery.of(context).padding.top + 12,
+      right: 10,
+      child: GestureDetector(
+        onTap: _openSupportDialog,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
           ),
-        ],
-      ),
-      child: const Text(
-        "🍺 Support",
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 15, // 🔥 größer
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.orange.shade400,
+                Colors.deepOrange,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(26),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.withValues(alpha: 0.4),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: const Text(
+            "🍺 Support",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
         ),
       ),
     ),
-  ),
+
+  ],
 ),
-
-
-    ],
-  ),
-),
-
-      ],
-    ),
 
     //--------------------------------------------------
     // ✅ NAV BAR
