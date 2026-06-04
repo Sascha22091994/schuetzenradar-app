@@ -19,21 +19,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _baseMonth = DateTime.now();
   bool _onlyFavorites = false;
 
-String _stripName(String name) {
-  String cleaned = name.toLowerCase()
-      .replaceAll("schützenfest", "")
-      .replaceAll("schutzenfest", "")
-      .replaceAll("großes", "")
-      .replaceAll("grosses", "")
-      .replaceAll("traditionelles", "")
-      .replaceAll("traditionell", "")
-      .trim();
-
-  if (cleaned.isEmpty) return name;
-
-  // ersten Buchstaben wieder groß
-  return cleaned[0].toUpperCase() + cleaned.substring(1);
-}
   //--------------------------------------------------
   String _monthName(int month) {
     const names = [
@@ -171,101 +156,56 @@ List<Widget> _buildCalendar(
               // EVENTS (kein Overflow mehr!)
              
 Expanded(
-  child: LayoutBuilder(
-    builder: (context, constraints) {
+  child: Align(
+    alignment: Alignment.topLeft,
+    child: events.isEmpty
+        ? const SizedBox()
+        : Row(
+            children: [
 
-      final maxHeight = constraints.maxHeight;
+              //--------------------------------------------------
+              // 🔴/🟢/🟡 MEHRERE PUNKTE (iOS STYLE)
+              //--------------------------------------------------
+              Row(
+                children: events.take(3).map((f) {
+                  final isFav =
+                      FavoriteService.isFavorite(f.id);
 
-      //--------------------------------------------------
-      // ❗ FALL 1: EXTREM KLEIN → NUR ZAHLEN
-      //--------------------------------------------------
-      if (maxHeight < 14) {
-        return const SizedBox(); // nichts anzeigen
-      }
-
-      //--------------------------------------------------
-      // ❗ FALL 2: KLEIN → NUR "+X" ODER 1 EVENT
-      //--------------------------------------------------
-      if (maxHeight < 30) {
-        if (events.isEmpty) return const SizedBox();
-
-        if (events.length == 1) {
-          return Text(
-            _stripName(events.first.name),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 8,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-          );
-        }
-
-        return Text(
-          "+${events.length}",
-          style: TextStyle(
-            fontSize: 8,
-            color: isDark ? Colors.grey[400] : Colors.grey,
-          ),
-        );
-      }
-
-      //--------------------------------------------------
-      // ✅ FALL 3: NORMAL / GROẞ → EVENTS ANZEIGEN
-      //--------------------------------------------------
-      int maxItems = maxHeight > 60 ? 2 : 1;
-
-      final visibleEvents = events.take(maxItems).toList();
-      final remaining = events.length - visibleEvents.length;
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-
-          ...visibleEvents.map((f) {
-            final isFav =
-                FavoriteService.isFavorite(f.id);
-
-            return Container(
-              margin: const EdgeInsets.only(top: 2),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 4,
-                vertical: 1,
+                  return Container(
+                    margin: const EdgeInsets.only(right: 2, top: 2),
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isFav
+                          ? Colors.yellow   // ⭐ Favorit
+                          : Colors.green,   // 🎯 normales Fest
+                      shape: BoxShape.circle,
+                    ),
+                  );
+                }).toList(),
               ),
-              decoration: BoxDecoration(
-                color: isFav
-                    ? Colors.orange
-                    : Colors.green,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                _stripName(f.name),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 8.5,
-                  color: Colors.white,
+
+              //--------------------------------------------------
+              // +X falls mehr als 3 Events
+              //--------------------------------------------------
+              if (events.length > 3)
+                Padding(
+                  padding: const EdgeInsets.only(left: 2),
+                  child: Text(
+                    "+${events.length - 3}",
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: isDark
+                          ? Colors.grey[400]
+                          : Colors.grey,
+                    ),
+                  ),
                 ),
-              ),
-            );
-          }),
-
-          if (remaining > 0)
-            Text(
-              "+$remaining",
-              style: TextStyle(
-                fontSize: 8,
-                color: isDark
-                    ? Colors.grey[400]
-                    : Colors.grey,
-              ),
-            ),
-        ],
-      );
-    },
+            ],
+          ),
   ),
 ),
+
              
             ],
           ),

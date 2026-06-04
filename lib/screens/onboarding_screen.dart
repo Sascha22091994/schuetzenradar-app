@@ -140,7 +140,10 @@ Widget _buildCalendarPage() {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.grey.shade200,
+            
+color: Colors.white,
+border: Border.all(color: Colors.grey.shade300),
+
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -154,8 +157,8 @@ Widget _buildCalendarPage() {
                     height: 18,
                     decoration: BoxDecoration(
                       color: (row == 1 && col == 3)
-                          ? Colors.green
-                          : Colors.grey.shade400,
+                          ? const Color(0xFF2E7D32) // dunkler grün
+                          : Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );
@@ -173,6 +176,7 @@ Widget _buildCalendarPage() {
           style: TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.bold,
+            color: Color(0xFF1B5E20),
           ),
         ),
 
@@ -184,6 +188,7 @@ Widget _buildCalendarPage() {
           style: TextStyle(
             fontSize: 15,
             height: 1.4,
+            color: Colors.black87,
           ),
         ),
       ],
