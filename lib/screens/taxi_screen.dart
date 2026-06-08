@@ -178,10 +178,23 @@ void _showAllAreas(BuildContext context, Taxi taxi) {
         stream: FirebaseFirestore.instance.collection('taxis').snapshots(),
         builder: (context, snapshot) {
 
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+if (snapshot.connectionState == ConnectionState.waiting) {
+  return const Center(
+    child: CircularProgressIndicator(),
+  );
+}
 
+if (snapshot.hasError) {
+  return const Center(
+    child: Text("Fehler beim Laden.\nBitte Verbindung prüfen."),
+  );
+}
+
+if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+  return const Center(
+    child: Text("Keine Daten verfügbar"),
+  );
+}
           final taxis = snapshot.data!.docs.map((doc) {
             return Taxi.fromMap(
               doc.id,

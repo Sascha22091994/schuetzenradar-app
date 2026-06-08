@@ -188,9 +188,23 @@ final Set<String> _expandedLiveEvents = {};
             .snapshots(),
         builder: (context, snapshot) {
 
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+  if (snapshot.connectionState == ConnectionState.waiting) {
+  return const Center(
+    child: CircularProgressIndicator(),
+  );
+}
+
+if (snapshot.hasError) {
+  return const Center(
+    child: Text("Fehler beim Laden.\nBitte Verbindung prüfen."),
+  );
+}
+
+if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+  return const Center(
+    child: Text("Keine Daten verfügbar"),
+  );
+}
 
           final allDocs = snapshot.data!.docs;
 

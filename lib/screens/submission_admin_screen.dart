@@ -224,10 +224,35 @@ class SubmissionAdminScreen extends StatelessWidget {
 
         builder: (context, snapshot) {
 
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+   if (snapshot.connectionState == ConnectionState.waiting) {
+  return const Center(
+    child: CircularProgressIndicator(),
+  );
+}
 
+if (snapshot.hasError) {
+  return const Center(
+    child: Text("Fehler beim Laden.\nBitte Verbindung prüfen."),
+  );
+}
+
+if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+  return const Center(
+    child: Text("Keine Daten verfügbar"),
+  );
+}
+
+if (snapshot.hasError) {
+  return const Center(
+    child: Text("Fehler beim Laden.\nBitte Verbindung prüfen."),
+  );
+}
+
+if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+  return const Center(
+    child: Text("Keine Daten verfügbar"),
+  );
+}
           final docs = snapshot.data!.docs;
 
           if (docs.isEmpty) {
