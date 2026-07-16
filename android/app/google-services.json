@@ -1,21 +1,40 @@
 {
   "project_info": {
-    "project_number": "66726540458",
-    "project_id": "schuetzenfest-app",
-    "storage_bucket": "schuetzenfest-app.firebasestorage.app"
+    "project_number": "33287523144",
+    "project_id": "event-radar-f0b2e",
+    "storage_bucket": "event-radar-f0b2e.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:66726540458:android:f1b3a9fb8562ab21cdccd3",
+        "mobilesdk_app_id": "1:33287523144:android:3823a8a0ea0399f114417d",
         "android_client_info": {
-          "package_name": "com.schuetzenradar.app"
+          "package_name": "de.eventradar.app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDE3onF4JT69OeL6nDKJPhNNVHDT1J6AM8"
+          "current_key": "AIzaSyC16uGxXb8pcIRC-JkABpDH22LTByuz0Ak"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:33287523144:android:c9dba3bc6d4ad1fa14417d",
+        "android_client_info": {
+          "package_name": "de.eventradar.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC16uGxXb8pcIRC-JkABpDH22LTByuz0Ak"
         }
       ],
       "services": {

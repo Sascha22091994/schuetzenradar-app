@@ -6,6 +6,7 @@ plugins {
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 val keystorePropertiesFile = rootProject.file("key.properties")
@@ -16,13 +17,13 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.schuetzenradar.app"
+    namespace = "de.eventradar.app"
     compileSdk = flutter.compileSdkVersion
 
     ndkVersion = "28.2.13676358"
 
     defaultConfig {
-        applicationId = "com.schuetzenradar.app"
+        applicationId = "de.eventradar.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -42,12 +43,13 @@ android {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
 
-                // ✅ RICHTIG: aus properties laden
-                val storeFileValue = keystoreProperties["storeFile"] as String
+                val storeFileValue =
+                    keystoreProperties["storeFile"] as String
+
                 storeFile = file(storeFileValue)
 
-                storePassword = keystoreProperties["storePassword"] as String
-
+                storePassword =
+                    keystoreProperties["storePassword"] as String
             }
         }
     }
@@ -79,9 +81,9 @@ android {
     buildTypes {
         getByName("release") {
 
-            // ✅ nur setzen, wenn Properties existieren
             if (keystorePropertiesFile.exists()) {
-                signingConfig = signingConfigs.getByName("release")
+                signingConfig =
+                    signingConfigs.getByName("release")
             }
 
             isMinifyEnabled = false
@@ -89,7 +91,6 @@ android {
         }
     }
 }
-
 dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
     implementation("com.google.firebase:firebase-analytics")

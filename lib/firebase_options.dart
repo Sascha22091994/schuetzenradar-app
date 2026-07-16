@@ -41,48 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDlspl4EU2LOOpPuQxKrCe0SZJMY66In14',
-    appId: '1:66726540458:web:52df7913bc511c63cdccd3',
-    messagingSenderId: '66726540458',
-    projectId: 'schuetzenfest-app',
-    authDomain: 'schuetzenfest-app.firebaseapp.com',
-    storageBucket: 'schuetzenfest-app.firebasestorage.app',
-    measurementId: 'G-9YRF5QL0FZ',
+    apiKey: 'AIzaSyCyJS3kuGiJdbAOci34y__AYBQkO-r6MkU',
+    appId: '1:33287523144:web:c3d1062777c4341814417d',
+    messagingSenderId: '33287523144',
+    projectId: 'event-radar-f0b2e',
+    authDomain: 'event-radar-f0b2e.firebaseapp.com',
+    storageBucket: 'event-radar-f0b2e.firebasestorage.app',
+    measurementId: 'G-Q5LTZ2G5QY',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDE3onF4JT69OeL6nDKJPhNNVHDT1J6AM8',
-    appId: '1:66726540458:android:e7f5601531cbd446cdccd3',
-    messagingSenderId: '66726540458',
-    projectId: 'schuetzenfest-app',
-    storageBucket: 'schuetzenfest-app.firebasestorage.app',
+    apiKey: 'AIzaSyC16uGxXb8pcIRC-JkABpDH22LTByuz0Ak',
+    appId: '1:33287523144:android:3823a8a0ea0399f114417d',
+    messagingSenderId: '33287523144',
+    projectId: 'event-radar-f0b2e',
+    storageBucket: 'event-radar-f0b2e.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAo_a919u4H1JGH44gfoZprXl4MBWrED6M',
-    appId: '1:66726540458:ios:ed6f9235bb61feaacdccd3',
-    messagingSenderId: '66726540458',
-    projectId: 'schuetzenfest-app',
-    storageBucket: 'schuetzenfest-app.firebasestorage.app',
-    iosBundleId: 'com.example.schuetzenfestApp',
+    apiKey: 'AIzaSyBw90Ng6puskX0EezDz2GcMWj6vIpNRoU4',
+    appId: '1:33287523144:ios:39cff6fdce696d8814417d',
+    messagingSenderId: '33287523144',
+    projectId: 'event-radar-f0b2e',
+    storageBucket: 'event-radar-f0b2e.firebasestorage.app',
+    iosBundleId: 'de.eventradar.app',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAo_a919u4H1JGH44gfoZprXl4MBWrED6M',
-    appId: '1:66726540458:ios:ed6f9235bb61feaacdccd3',
-    messagingSenderId: '66726540458',
-    projectId: 'schuetzenfest-app',
-    storageBucket: 'schuetzenfest-app.firebasestorage.app',
+    apiKey: 'AIzaSyBw90Ng6puskX0EezDz2GcMWj6vIpNRoU4',
+    appId: '1:33287523144:ios:8708dbea7c77976514417d',
+    messagingSenderId: '33287523144',
+    projectId: 'event-radar-f0b2e',
+    storageBucket: 'event-radar-f0b2e.firebasestorage.app',
     iosBundleId: 'com.example.schuetzenfestApp',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDlspl4EU2LOOpPuQxKrCe0SZJMY66In14',
-    appId: '1:66726540458:web:3fa646f86d93f368cdccd3',
-    messagingSenderId: '66726540458',
-    projectId: 'schuetzenfest-app',
-    authDomain: 'schuetzenfest-app.firebaseapp.com',
-    storageBucket: 'schuetzenfest-app.firebasestorage.app',
-    measurementId: 'G-L6CJ4HNRTK',
+    apiKey: 'AIzaSyCyJS3kuGiJdbAOci34y__AYBQkO-r6MkU',
+    appId: '1:33287523144:web:7043818f8879477a14417d',
+    messagingSenderId: '33287523144',
+    projectId: 'event-radar-f0b2e',
+    authDomain: 'event-radar-f0b2e.firebaseapp.com',
+    storageBucket: 'event-radar-f0b2e.firebasestorage.app',
+    measurementId: 'G-C21EVFR7D1',
   );
 }

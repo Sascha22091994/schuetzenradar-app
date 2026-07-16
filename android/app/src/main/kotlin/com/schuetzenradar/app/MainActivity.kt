@@ -1,4 +1,4 @@
-package com.schuetzenradar.app
+package de.eventradar.app
 
 import io.flutter.embedding.android.FlutterActivity
 

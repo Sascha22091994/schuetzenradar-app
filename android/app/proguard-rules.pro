@@ -1,5 +1,5 @@
 # Flutter MainActivity NICHT entfernen
--keep class com.schuetzenradar.app.MainActivity { *; }
+-keep class de.eventradar.app.MainActivity { *; }
 
 # Flutter core
 -keep class io.flutter.** { *; }

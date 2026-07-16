@@ -17,7 +17,7 @@
     <string>$(EXECUTABLE_NAME)</string>
 
     <key>CFBundleIdentifier</key>
-    <string>com.schuetzenradar.app</string>
+    <string>de.eventradar.app</string>
 
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
