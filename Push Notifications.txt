@@ -6,7 +6,7 @@ Beispiele:
 
 
 2. Kartenansicht
-👉 Festivals auf Google Maps
+👉 Events auf Google Maps
 
 "Heute / Wochenende" Filter
 
@@ -17,7 +17,7 @@ Beispiele:
 → besser: Kalender auswählen
 
 
-✅ Edit Dialog nicer (mehr Felder bei Festivals)
+✅ Edit Dialog nicer (mehr Felder bei Events)
 
 
 ✅ Lade-Fehler schöner anzeigen

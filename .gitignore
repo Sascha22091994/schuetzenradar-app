@@ -43,3 +43,29 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ============================================
+# 🔴 GEHEIM – niemals committen
+# ============================================
+# Android Signing
+**/key.properties
+**/*.jks
+**/*.keystore
+*.jks
+*.keystore
+
+# Firebase / Google
+**/google-services.json
+**/GoogleService-Info.plist
+**/service-account*.json
+**/*serviceAccountKey*.json
+.firebase/
+
+# Umgebungsvariablen
+.env
+*.env
+!.env.example
+
+# Cloud Functions
+functions/node_modules/
+functions/.env

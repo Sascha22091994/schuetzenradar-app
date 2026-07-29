@@ -1,8 +1,8 @@
-name: schuetzenfest_app
-description: "SchützenRadar App"
+name: erlebnisradar_app
+description: "ErlebnisRadar App"
 publish_to: 'none'
 
-version: 1.2.0+2   # ✅ Version hochziehen für Apple Re-Upload!
+version: 1.2.0+2
 
 environment:
   sdk: ^3.11.1
@@ -11,79 +11,55 @@ dependencies:
   flutter:
     sdk: flutter
 
-
   flutter_localizations:
-    sdk: flutter   # ✅ HIER HIN
+    sdk: flutter
 
   google_maps_flutter: ^2.6.0
   geolocator: ^11.0.0
   url_launcher: ^6.2.6
   shared_preferences: ^2.2.3
+  package_info_plus: ^8.0.0
+  http: ^1.2.0
+
   firebase_core: ^3.13.0
   cloud_firestore: ^5.6.0
+  firebase_storage: ^12.4.10
+  firebase_messaging: ^15.2.10
+  firebase_crashlytics: ^4.3.10
+
   share_plus: ^7.2.1
-  firebase_messaging: 15.2.10
   geocoding: ^2.1.0
   intl: ^0.20.2
+  google_fonts: ^6.3.0
+
+  image_picker: ^1.0.7
 
   cupertino_icons: ^1.0.8
-  firebase_crashlytics: ^4.3.10
-  image_picker: ^1.0.7
-firebase_storage: ^11.6.0
-  
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-
   flutter_lints: ^6.0.0
-
-  # ✅ DEV TOOLS
   flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.4.0
-  firebase_storage: ^12.4.10
 
+flutter_native_splash:
+  color: "#4F46E5"
+  image: assets/icon/splash_logo.png
 
-#--------------------------------------------------
-# ✅ APP ICON (JETZT RICHTIG FÜR APPLE!)
-#--------------------------------------------------
+  android_12:
+    image: assets/icon/splash_logo.png
+    color: "#4F46E5"
+
 flutter_launcher_icons:
   android: true
   ios: true
 
-  # ✅ JETZT DAS RICHTIGE ICON!
-  image_path: "assets/appstore.png"
+  image_path: "assets/icon/icon.png"
 
-  # ✅ Android Adaptive Icon
-  adaptive_icon_background: "#2E7D32"
-  adaptive_icon_foreground: "assets/appstore.png"
+  adaptive_icon_background: "#4F46E5"
+  adaptive_icon_foreground: "assets/icon/icon.png"
 
-
-#--------------------------------------------------
-# ✅ SPLASH SCREEN (BLEIBT WIE ER WAR)
-#--------------------------------------------------
-flutter_native_splash:
-  color: "#2E7D32"
-
-  # ✅ Splash darf Branding haben
-  image: assets/appstore.png
-
-  android_12:
-    image: assets/appstore.png
-    color: "#2E7D32"
-
-  android: true
-  ios: true
-
-
-#--------------------------------------------------
-# ✅ FLUTTER SETTINGS
-#--------------------------------------------------
 flutter:
   uses-material-design: true
-
-  assets:
-    - assets/icon.png
-    - assets/appstore.png
-    - assets/onboarding/

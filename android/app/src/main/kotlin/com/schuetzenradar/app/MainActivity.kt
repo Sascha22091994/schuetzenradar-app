@@ -1,4 +1,4 @@
-package de.eventradar.app
+package de.erlebnisradar.app
 
 import io.flutter.embedding.android.FlutterActivity
 

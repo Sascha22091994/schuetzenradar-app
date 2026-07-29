@@ -1,1 +1,54 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"event-radar-f0b2e","appId":"1:33287523144:android:3823a8a0ea0399f114417d","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"event-radar-f0b2e","configurations":{"android":"1:33287523144:android:3823a8a0ea0399f114417d","ios":"1:33287523144:ios:39cff6fdce696d8814417d","macos":"1:33287523144:ios:8708dbea7c77976514417d","web":"1:33287523144:web:c3d1062777c4341814417d","windows":"1:33287523144:web:7043818f8879477a14417d"}}}}},"functions":[{"source":"functions","codebase":"default","disallowLegacyRuntimeConfig":true,"ignore":["node_modules",".git","firebase-debug.log","firebase-debug.*.log","*.local"],"predeploy":["npm --prefix \"$RESOURCE_DIR\" run lint"]}]}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "erlebnis-radar",
+          "appId": "1:164725067636:android:7a773059edbf3067a4a621",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "erlebnis-radar",
+          "configurations": {
+            "android": "1:164725067636:android:7a773059edbf3067a4a621",
+            "ios": "1:164725067636:ios:3a09866b0dd9e1f6a4a621",
+            "macos": "1:164725067636:ios:31bb8e1dec550493a4a621",
+            "web": "1:164725067636:web:346f5e47a940fa78a4a621",
+            "windows": "1:164725067636:web:8c34839200dd8cc6a4a621"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ],
+      "source": "functions"
+    },
+    {
+      "source": "ticketmaster",
+      "codebase": "ticketmaster",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="de.eventradar.app">
+    package="de.erlebnisradar.app">
 
     <!-- ✅ INTERNET -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -19,14 +19,14 @@
         tools:node="remove"/>
 
     <application
-        android:label="SchützenRadar"
+        android:label="ErlebnisRadar"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
         <!-- ✅ GOOGLE MAPS API KEY -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAvFQBmT8trMPJxkWlm43j8i9f5FbAjJp0"/>
+            android:value="AIzaSyC16uGxXb8pcIRC-JkABpDH22LTByuz0Ak"/>
 
         <activity
             android:name=".MainActivity"

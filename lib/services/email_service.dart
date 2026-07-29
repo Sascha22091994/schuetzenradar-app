@@ -3,12 +3,12 @@ import 'package:url_launcher/url_launcher.dart';
 class EmailService {
 
   static Future<void> sendFeedback({
-    String subject = "SchützenRadar – Feedback & Kontakt",
+    String subject = "ErlebnisRadar – Feedback & Kontakt",
     String body = _defaultBody,
   }) async {
 
     final Uri emailUri = Uri.parse(
-      'mailto:info-schuetzenradar@web.de'
+      'mailto:info-ErlebnisRadar@web.de'
       '?subject=${Uri.encodeComponent(subject)}'
       '&body=${Uri.encodeComponent(body)}',
     );

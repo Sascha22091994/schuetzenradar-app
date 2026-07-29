@@ -41,46 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCyJS3kuGiJdbAOci34y__AYBQkO-r6MkU',
-    appId: '1:33287523144:web:c3d1062777c4341814417d',
-    messagingSenderId: '33287523144',
-    projectId: 'event-radar-f0b2e',
-    authDomain: 'event-radar-f0b2e.firebaseapp.com',
-    storageBucket: 'event-radar-f0b2e.firebasestorage.app',
-    measurementId: 'G-Q5LTZ2G5QY',
+    apiKey: 'AIzaSyAwnA6cxLKLHWY1UMFL1pEeLXWzKTXkyzA',
+    appId: '1:164725067636:web:346f5e47a940fa78a4a621',
+    messagingSenderId: '164725067636',
+    projectId: 'erlebnis-radar',
+    authDomain: 'erlebnis-radar.firebaseapp.com',
+    storageBucket: 'erlebnis-radar.firebasestorage.app',
+    measurementId: 'G-8VH2RJGXGG',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyC16uGxXb8pcIRC-JkABpDH22LTByuz0Ak',
-    appId: '1:33287523144:android:3823a8a0ea0399f114417d',
-    messagingSenderId: '33287523144',
-    projectId: 'event-radar-f0b2e',
-    storageBucket: 'event-radar-f0b2e.firebasestorage.app',
+    apiKey: 'AIzaSyDcsr44usZII8rTj7lf8z_v6pR0_D6Rfo4',
+    appId: '1:164725067636:android:7a773059edbf3067a4a621',
+    messagingSenderId: '164725067636',
+    projectId: 'erlebnis-radar',
+    storageBucket: 'erlebnis-radar.firebasestorage.app',
   );
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBw90Ng6puskX0EezDz2GcMWj6vIpNRoU4',
-    appId: '1:33287523144:ios:39cff6fdce696d8814417d',
-    messagingSenderId: '33287523144',
-    projectId: 'event-radar-f0b2e',
-    storageBucket: 'event-radar-f0b2e.firebasestorage.app',
-    iosBundleId: 'de.eventradar.app',
+    apiKey: 'AIzaSyDlhUzxlnKI6bfQky8AEKB8C3BQVcgOQEg',
+    appId: '1:164725067636:ios:3a09866b0dd9e1f6a4a621',
+    messagingSenderId: '164725067636',
+    projectId: 'erlebnis-radar',
+    storageBucket: 'erlebnis-radar.firebasestorage.app',
+    iosBundleId: 'de.erlebnisradar.app',
   );
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBw90Ng6puskX0EezDz2GcMWj6vIpNRoU4',
-    appId: '1:33287523144:ios:8708dbea7c77976514417d',
-    messagingSenderId: '33287523144',
-    projectId: 'event-radar-f0b2e',
-    storageBucket: 'event-radar-f0b2e.firebasestorage.app',
+    apiKey: 'AIzaSyDlhUzxlnKI6bfQky8AEKB8C3BQVcgOQEg',
+    appId: '1:164725067636:ios:31bb8e1dec550493a4a621',
+    messagingSenderId: '164725067636',
+    projectId: 'erlebnis-radar',
+    storageBucket: 'erlebnis-radar.firebasestorage.app',
     iosBundleId: 'com.example.schuetzenfestApp',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCyJS3kuGiJdbAOci34y__AYBQkO-r6MkU',
-    appId: '1:33287523144:web:7043818f8879477a14417d',
-    messagingSenderId: '33287523144',
-    projectId: 'event-radar-f0b2e',
-    authDomain: 'event-radar-f0b2e.firebaseapp.com',
-    storageBucket: 'event-radar-f0b2e.firebasestorage.app',
-    measurementId: 'G-C21EVFR7D1',
+    apiKey: 'AIzaSyAwnA6cxLKLHWY1UMFL1pEeLXWzKTXkyzA',
+    appId: '1:164725067636:web:8c34839200dd8cc6a4a621',
+    messagingSenderId: '164725067636',
+    projectId: 'erlebnis-radar',
+    authDomain: 'erlebnis-radar.firebaseapp.com',
+    storageBucket: 'erlebnis-radar.firebasestorage.app',
+    measurementId: 'G-Q4SVP2TG0B',
   );
 }

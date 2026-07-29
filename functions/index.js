@@ -1,176 +1,133 @@
 const { setGlobalOptions } = require("firebase-functions");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
-const { getFirestore } = require("firebase-admin/firestore");
-const { onDocumentUpdated, onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { getFirestore, Timestamp } = require("firebase-admin/firestore");
 
 admin.initializeApp();
 const db = getFirestore();
 
-setGlobalOptions({ maxInstances: 10 });
+setGlobalOptions({ maxInstances: 10, region: "europe-west3" });
 
-//--------------------------------------------
-// ✅ HELPER: TYPE SCHÖN UMWANDELN
-//--------------------------------------------
-function getTypeLabel(type) {
-  if (type.toLowerCase() === "alt") return "Altkönig schießen";
-  if (type.toLowerCase() === "jung") return "Jungkönig schießen";
-  return type;
-}
+//====================================================
+// ✅ HELPER: PUSH AN EIN EVENT-TOPIC
+//====================================================
+async function sendEventPush(eventId, title, body, extraData = {}) {
 
-//--------------------------------------------
-// ✅ HELPER: TEILE SCHÖN FORMATIEREN
-//--------------------------------------------
-function getPartLabel(key) {
-  switch (key) {
-    case "Krone": return "Krone 👑";
-    case "Zepter": return "Zepter ✨";
-    case "Reichsapfel": return "Reichsapfel 🍎";
-    case "Flügel links": return "Flügel links 🪽";
-    case "Flügel rechts": return "Flügel rechts 🪽";
-    case "Adler": return "Adler 🦅";
-    default: return key;
-  }
-}
-
-//--------------------------------------------
-// ✅ ADLER EVENTS (ALT / JUNG)
-//--------------------------------------------
-exports.adlerEventsPush = onDocumentUpdated(
-  "adler_events/{location}/events/{type}",
-  async (event) => {
-
-    const before = event.data.before.data();
-    const after = event.data.after.data();
-
-    const location = event.params.location;
-    const type = event.params.type;
-
-    const typeLabel = getTypeLabel(type);
-
-    //--------------------------------------------
-    // ✅ ADLERSCHIESSEN START
-    //--------------------------------------------
-    if (!before.isActive && after.isActive) {
-      await sendPush(
-        location,
-        `🪶 ${typeLabel}`,
-        `${typeLabel} läuft jetzt!`
-      );
-    }
-
-    //--------------------------------------------
-    // ✅ TREFFER: ALLE TEILE ERKENNEN ✅
-    //--------------------------------------------
-    const beforeResults = before.results || {};
-    const afterResults = after.results || {};
-
-    for (const key of Object.keys(afterResults)) {
-
-      const beforePart = beforeResults[key];
-      const afterPart = afterResults[key];
-
-      const beforeShots = beforePart?.shots || 0;
-      const afterShots = afterPart?.shots || 0;
-
-      if (afterShots > beforeShots) {
-
-        const partLabel = getPartLabel(key);
-
-        await sendPush(
-          location,
-          "🎯 Treffer!",
-          `${typeLabel}: ${partLabel} getroffen!`
-        );
-
-        break; // ✅ verhindert doppelten Push
-      }
-    }
-
-    //--------------------------------------------
-    // ✅ NEUER KÖNIG
-    //--------------------------------------------
-    if (!before.kingName && after.kingName) {
-      await sendPush(
-        location,
-        "👑 Neuer König!",
-        `${after.kingName} ist neuer König (${typeLabel})`
-      );
-    }
-  }
-);
-
-//--------------------------------------------
-// ✅ FESTIVAL START
-//--------------------------------------------
-exports.festivalStartPush = onDocumentUpdated(
-  "festivals/{festivalId}",
-  async (event) => {
-
-    const before = event.data.before.data();
-    const after = event.data.after.data();
-
-    const id = event.params.festivalId;
-
-    if (before.isLive !== true && after.isLive === true) {
-      await sendPush(
-        id,
-        "🎉 Heute geht's los!",
-        `${after.name ?? id} startet jetzt!`
-      );
-    }
-  }
-);
-
-//--------------------------------------------
-// ✅ HELPER: PUSH MIT NAMEN
-//--------------------------------------------
-async function sendPush(location, title, body) {
-
-  let festivalName = location;
+  let eventName = eventId;
 
   try {
-    const doc = await db.collection("festivals").doc(location).get();
+    const doc = await db.collection("events").doc(eventId).get();
     if (doc.exists && doc.data().name) {
-      festivalName = doc.data().name;
+      eventName = doc.data().name;
     }
   } catch (e) {
-    console.log("⚠️ Name konnte nicht geladen werden");
+    console.log("Name konnte nicht geladen werden:", e.message);
   }
 
-  await admin.messaging().send({
-    topic: `festival_${location}`,
-    notification: {
-      title,
-      body: `${festivalName}\n${body}`,
-    },
-  });
+  try {
+    await admin.messaging().send({
+      topic: `Event_${eventId}`,
+      notification: {
+        title,
+        body: `${eventName}\n${body}`,
+      },
+      data: {
+        eventId,
+        ...extraData,
+      },
+    });
 
-  console.log(`✅ Push für ${festivalName}: ${title}`);
+    console.log(`Push für ${eventName}: ${title}`);
+  } catch (e) {
+    console.error(`Push fehlgeschlagen für ${eventId}:`, e.message);
+  }
 }
-//--------------------------------------------
-// ✅ ADMIN NEWS PUSH (CREATE ✅)
-//--------------------------------------------
+
+//====================================================
+// ✅ ERINNERUNG: FAVORISIERTES EVENT STEHT HEUTE AN
+//====================================================
+// Läuft täglich um 08:00 Uhr (Europe/Berlin).
+// Pusht ans Event_<id>-Topic, das Nutzer beim
+// Favorisieren automatisch abonnieren (siehe FavoriteService).
+//----------------------------------------------------
+exports.eventStartingTodayReminder = onSchedule(
+  {
+    schedule: "0 8 * * *",
+    timeZone: "Europe/Berlin",
+  },
+  async () => {
+
+    const now = new Date();
+    const todayKey = now.toISOString().slice(0, 10);
+
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    const snapshot = await db
+      .collection("events")
+      .where("startDate", ">=", Timestamp.fromDate(startOfDay))
+      .where("startDate", "<=", Timestamp.fromDate(endOfDay))
+      .get();
+
+    if (snapshot.empty) {
+      console.log("Keine Events, die heute starten.");
+      return;
+    }
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+
+      if (data.startReminderSentOn === todayKey) {
+        continue;
+      }
+
+      await sendEventPush(
+        doc.id,
+        "🎉 Heute geht's los!",
+        `${data.name ?? doc.id} startet heute!`,
+        { type: "event_start" }
+      );
+
+      await doc.ref.update({ startReminderSentOn: todayKey });
+    }
+
+    console.log(`Erinnerungen für ${snapshot.size} Event(s) geprüft.`);
+  }
+);
+
+//====================================================
+// ✅ ADMIN NEWS PUSH (CREATE)
+//====================================================
 exports.adminNewsCreatePush = onDocumentCreated(
   "admin_news/{docId}",
   async (event) => {
 
     const data = event.data.data();
 
-    await admin.messaging().send({
-      topic: "all",
-      notification: {
-        title: `📢 ${data.title}`,
-        body: data.content,
-      },
-    });
+    try {
+      await admin.messaging().send({
+        topic: "all",
+        notification: {
+          title: `📢 ${data.title}`,
+          body: data.content,
+        },
+        data: {
+          type: "admin_news",
+          docId: event.params.docId,
+        },
+      });
 
-    console.log("✅ Admin Push (CREATE):", data.title);
+      console.log("Admin Push (CREATE):", data.title);
+    } catch (e) {
+      console.error("Admin Push (CREATE) fehlgeschlagen:", e.message);
+    }
   }
 );
 
-//--------------------------------------------
-// ✅ ADMIN NEWS PUSH (UPDATE ✅)
-//--------------------------------------------
+//====================================================
+// ✅ ADMIN NEWS PUSH (UPDATE)
+//====================================================
 exports.adminNewsUpdatePush = onDocumentUpdated(
   "admin_news/{docId}",
   async (event) => {
@@ -182,15 +139,23 @@ exports.adminNewsUpdatePush = onDocumentUpdated(
       before.title !== after.title ||
       before.content !== after.content
     ) {
-      await admin.messaging().send({
-        topic: "all",
-        notification: {
-          title: `📢 ${after.title}`,
-          body: after.content,
-        },
-      });
+      try {
+        await admin.messaging().send({
+          topic: "all",
+          notification: {
+            title: `📢 ${after.title}`,
+            body: after.content,
+          },
+          data: {
+            type: "admin_news",
+            docId: event.params.docId,
+          },
+        });
 
-      console.log("✅ Admin Push (UPDATE):", after.title);
+        console.log("Admin Push (UPDATE):", after.title);
+      } catch (e) {
+        console.error("Admin Push (UPDATE) fehlgeschlagen:", e.message);
+      }
     }
   }
 );

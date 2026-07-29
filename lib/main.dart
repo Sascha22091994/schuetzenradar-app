@@ -3,16 +3,19 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'dart:ui';
 import 'firebase_options.dart';
-import 'screens/splash_screen.dart';
 import 'services/favorite_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'screens/main_navigation_screen.dart';
+import 'theme/app_colors.dart';
+import 'theme/app_radius.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 //--------------------------------------------------
-// ✅ GLOBAL NAVIGATOR KEY (NEU!)
- //--------------------------------------------------
+// ✅ GLOBAL NAVIGATOR KEY
+//--------------------------------------------------
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 //--------------------------------------------------
@@ -38,6 +41,28 @@ Future<void> toggleTheme() async {
     'theme',
     newMode == ThemeMode.dark ? 'dark' : 'light',
   );
+}
+
+// ✅ NEU: neben toggleTheme() ergänzen
+Future<void> setThemeMode(ThemeMode mode) async {
+  final prefs = await SharedPreferences.getInstance();
+
+  themeNotifier.value = mode;
+
+  String value;
+  switch (mode) {
+    case ThemeMode.dark:
+      value = 'dark';
+      break;
+    case ThemeMode.light:
+      value = 'light';
+      break;
+    case ThemeMode.system:
+      value = 'system';
+      break;
+  }
+
+  await prefs.setString('theme', value);
 }
 
 //--------------------------------------------------
@@ -74,7 +99,7 @@ Future<void> main() async {
     await FavoriteService.loadFavorites();
 
     //--------------------------------------------------
-    // ✅ PUSH SETUP (JETZT MIT UI!)
+    // ✅ PUSH SETUP
     //--------------------------------------------------
     if (!kIsWeb) {
       try {
@@ -84,16 +109,16 @@ Future<void> main() async {
         debugPrint("Push Permission: ${settings.authorizationStatus}");
 
         final token = await FirebaseMessaging.instance.getToken();
-        debugPrint("🔥 FCM Token: $token");
+        debugPrint("FCM Token: $token");
 
         await FirebaseMessaging.instance.subscribeToTopic("all");
 
         //--------------------------------------------------
-        // ✅ PUSH IM VORDERGRUND ANZEIGEN (NEU!)
+        // ✅ PUSH IM VORDERGRUND ANZEIGEN
         //--------------------------------------------------
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
 
-          debugPrint("📩 Push erhalten:");
+          debugPrint("Push erhalten:");
           debugPrint("Titel: ${message.notification?.title}");
           debugPrint("Text: ${message.notification?.body}");
 
@@ -101,29 +126,26 @@ Future<void> main() async {
 
           if (context == null) return;
 
-          // ✅ Hier kannst du wählen:
-
-          // 🔥 OPTION 1: Dialog
           showDialog(
             context: context,
-            builder: (_) => AlertDialog(
+            builder: (dialogContext) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
               title: Text(message.notification?.title ?? "Neu"),
               content: Text(message.notification?.body ?? ""),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text("OK"),
+                ),
+              ],
             ),
           );
-
-          // 🔥 OPTION 2 (statt Dialog):
-          // ScaffoldMessenger.of(context).showSnackBar(
-          //   SnackBar(
-          //     content: Text(
-          //       message.notification?.title ?? "Neue Nachricht",
-          //     ),
-          //   ),
-          // );
         });
 
       } catch (e) {
-        debugPrint("⚠️ Push Fehler: $e");
+        debugPrint("Push Fehler: $e");
       }
     }
 
@@ -143,10 +165,10 @@ Future<void> main() async {
           .setCrashlyticsCollectionEnabled(true);
     }
 
-    debugPrint("✅ INIT FERTIG");
+    debugPrint("INIT FERTIG");
 
   } catch (e) {
-    debugPrint("🔥 INIT ERROR: $e");
+    debugPrint("INIT ERROR: $e");
   }
 
   //--------------------------------------------------
@@ -167,9 +189,9 @@ class MyApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (context, mode, _) {
         return MaterialApp(
-          navigatorKey: navigatorKey, // ✅ EXTREM WICHTIG
+          navigatorKey: navigatorKey,
           debugShowCheckedModeBanner: false,
-          title: 'SchützenRadar',
+          title: 'ErlebnisRadar',
 
           //--------------------------------------------------
           // ✅ DEUTSCH GLOBAL
@@ -178,13 +200,11 @@ class MyApp extends StatelessWidget {
           supportedLocales: const [
             Locale('de', 'DE'),
           ],
-          localizationsDelegates: [
+          localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-
-          //--------------------------------------------------
 
           themeMode: mode,
           theme: _buildLightTheme(),
@@ -194,7 +214,7 @@ class MyApp extends StatelessWidget {
             overscroll: false,
           ),
 
-          home: const SplashScreen(),
+          home: const MainNavigationScreen(),
         );
       },
     );
@@ -207,11 +227,44 @@ class MyApp extends StatelessWidget {
 ThemeData _buildLightTheme() {
   return ThemeData(
     useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF2E7D32),
-      brightness: Brightness.light,
+
+    colorScheme: ColorScheme.light(
+      primary: AppColors.primary,
+      secondary: AppColors.secondary,
+      surface: AppColors.cardLight,
+      error: AppColors.danger,
     ),
-    scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+
+    textTheme: GoogleFonts.interTextTheme(),
+    scaffoldBackgroundColor: AppColors.backgroundLight,
+
+    cardTheme: CardThemeData(
+      color: AppColors.cardLight,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+    ),
+
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderSide: BorderSide.none,
+      ),
+    ),
+
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        minimumSize: const Size.fromHeight(54),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+      ),
+    ),
   );
 }
 
@@ -221,10 +274,49 @@ ThemeData _buildLightTheme() {
 ThemeData _buildDarkTheme() {
   return ThemeData(
     useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF2E7D32),
-      brightness: Brightness.dark,
+
+    colorScheme: ColorScheme.dark(
+      primary: AppColors.primary,
+      secondary: AppColors.secondary,
+      surface: AppColors.cardDark,
+      error: AppColors.danger,
     ),
-    scaffoldBackgroundColor: const Color(0xFF121212),
+
+    scaffoldBackgroundColor: AppColors.backgroundDark,
+
+    // ✅ ANGEPASST: Inter-Font auf Flutters DUNKLES Typography-Schema
+    // aufbauen (statt implizit auf das helle) – dadurch bekommen ALLE
+    // Textstile (bodyMedium, titleLarge, etc.) automatisch die korrekte,
+    // helle Farbe im Dark Mode, ohne dass jeder einzelne Text() im
+    // gesamten Projekt manuell eine Farbe setzen muss.
+    textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+
+    cardTheme: CardThemeData(
+      color: AppColors.cardDark,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+    ),
+
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.cardDark,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderSide: BorderSide.none,
+      ),
+    ),
+
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        minimumSize: const Size.fromHeight(54),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+      ),
+    ),
   );
 }

@@ -21,7 +21,7 @@ class FavoriteService {
 
     // ✅ Sicherheit: Topics synchronisieren
     for (final id in _favorites) {
-      await FirebaseMessaging.instance.subscribeToTopic("festival_$id");
+      await FirebaseMessaging.instance.subscribeToTopic("Event_$id");
     }
   }
 
@@ -39,13 +39,13 @@ class FavoriteService {
       _favorites.remove(id);
 
       await FirebaseMessaging.instance
-          .unsubscribeFromTopic("festival_$id");
+          .unsubscribeFromTopic("Event_$id");
 
     } else {
       _favorites.add(id);
 
       await FirebaseMessaging.instance
-          .subscribeToTopic("festival_$id");
+          .subscribeToTopic("Event_$id");
     }
 
     await _prefs?.setStringList(_key, _favorites.toList());
@@ -56,7 +56,7 @@ class FavoriteService {
     _favorites.add(id);
 
     await FirebaseMessaging.instance
-        .subscribeToTopic("festival_$id");
+        .subscribeToTopic("Event_$id");
 
     await _prefs?.setStringList(_key, _favorites.toList());
   }
@@ -66,7 +66,7 @@ class FavoriteService {
     _favorites.remove(id);
 
     await FirebaseMessaging.instance
-        .unsubscribeFromTopic("festival_$id");
+        .unsubscribeFromTopic("Event_$id");
 
     await _prefs?.setStringList(_key, _favorites.toList());
   }
@@ -81,7 +81,7 @@ class FavoriteService {
   static Future<void> clearAll() async {
     for (final id in _favorites) {
       await FirebaseMessaging.instance
-          .unsubscribeFromTopic("festival_$id");
+          .unsubscribeFromTopic("Event_$id");
     }
 
     _favorites.clear();

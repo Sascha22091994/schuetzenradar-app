@@ -17,13 +17,13 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "de.eventradar.app"
+    namespace = "de.erlebnisradar.app"
     compileSdk = flutter.compileSdkVersion
 
     ndkVersion = "28.2.13676358"
 
     defaultConfig {
-        applicationId = "de.eventradar.app"
+        applicationId = "de.erlebnisradar.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

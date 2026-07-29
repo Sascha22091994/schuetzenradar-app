@@ -269,7 +269,7 @@ Finn hat Krone mit Schuss 30 getroffen
 ### locations
 → Orte
 
-### festivals
+### Events
 → Termine
 
 ### news
@@ -304,7 +304,7 @@ Finn hat Krone mit Schuss 30 getroffen
 
 ## models/
 
-- festival.dart
+- Event.dart
 - news.dart
 - location.dart
 
@@ -333,7 +333,7 @@ Finn hat Krone mit Schuss 30 getroffen
 
 ## widgets/
 
-- festival_card.dart
+- Event_card.dart
 - countdown_widget.dart
 
 ---

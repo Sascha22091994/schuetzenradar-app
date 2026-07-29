@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-import '../models/festival.dart';
-import '../models/month_filter.dart';
-import '../widgets/festival_card.dart';
-import '../services/favorite_service.dart';
-import '../screens/taxi_screen.dart';
 import 'package:geolocator/geolocator.dart';
-import '../screens/map_screen.dart';
-import 'submit_festival_screen.dart';
+
+import '../models/event.dart';
+import '../models/event_category.dart';
+import '../services/event_query_service.dart';
+import '../services/user_preferences_service.dart';
+import '../services/weather_service.dart';
+import '../widgets/event_card.dart';
+import '../widgets/weather_forecast_sheet.dart';
+import '../theme/app_colors.dart';
+import 'submit_event_screen.dart';
 import 'calendar_screen.dart';
-
-
-enum SortMode {
-  date,
-  distance,
-}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,690 +22,951 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String searchQuery = '';
 
-  MonthFilter _filter = MonthFilter.all;
-  String _searchQuery = '';
+  final Set<EventCategory> selectedCategories = {};
+  final Set<String> selectedCities = {};
+  bool showPastEvents = false;
 
-  
+  static const double _defaultMaxDistance = 50;
+  double maxDistance = _defaultMaxDistance;
 
+  double? userLatitude;
+  double? userLongitude;
 
-SortMode _sortMode = SortMode.date;
+  DailyWeather? _todayWeather;
+  List<DailyWeather> _forecast = [];
+  bool _weatherFailed = false;
 
+  bool _isFabVisible = true;
 
-  // ✅ GEO STATE NEU
-  Position? _userPosition;
-  double _radiusKm = 25;
+  final ScrollController _scrollController = ScrollController();
 
- 
-DateTime get today {
-  final now = DateTime.now();
-  return DateTime(now.year, now.month, now.day);
-}
+  List<Event> _events = [];
+  List<Event> _highlights = [];
+  List<String> _availableCities = [];
 
+  DocumentSnapshot<Map<String, dynamic>>? _lastDoc;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+  bool _isInitialLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadLocation(); // ✅ NEU
+    _scrollController.addListener(_onScroll);
+    _loadDefaultFiltersAndInitial();
+    _loadLocationAndWeather();
+
+    EventQueryService.fetchAvailableCities().then((cities) {
+      if (mounted) setState(() => _availableCities = cities);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   //--------------------------------------------------
-  // ✅ GEO: LOCATION LADEN (NEU)
+  Future<void> _loadDefaultFiltersAndInitial() async {
+    final defaultCities = await UserPreferencesService.getDefaultCities();
+    final defaultCategoryValues =
+        await UserPreferencesService.getDefaultCategoryValues();
+
+    selectedCities.addAll(defaultCities);
+
+    for (final value in defaultCategoryValues) {
+      final category = EventCategoryExtension.fromString(value);
+      if (category != null) selectedCategories.add(category);
+    }
+
+    await _loadInitial();
+  }
+
   //--------------------------------------------------
-  Future<void> _loadLocation() async {
-    LocationPermission permission = await Geolocator.checkPermission();
+  // ✅ ANGEPASST: komplette Vorhersage behalten statt nur "heute"
+  //--------------------------------------------------
+  Future<void> _loadLocationAndWeather() async {
+    try {
+      final position = await Geolocator.getCurrentPosition();
 
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
+      if (mounted) {
+        setState(() {
+          userLatitude = position.latitude;
+          userLongitude = position.longitude;
+        });
+      }
+
+      final forecast = await WeatherService.fetchForecast(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+
+      final today = WeatherService.findForDate(forecast, DateTime.now());
+
+      if (mounted) {
+        setState(() {
+          _forecast = forecast;
+          _todayWeather = today;
+        });
+      }
+    } catch (e) {
+      debugPrint("Wetter/Standort konnte nicht geladen werden: $e");
+      if (mounted) setState(() => _weatherFailed = true);
+    }
+  }
+
+  //--------------------------------------------------
+  void _onScroll() {
+    final direction = _scrollController.position.userScrollDirection;
+
+    if (direction == ScrollDirection.reverse && _isFabVisible) {
+      setState(() => _isFabVisible = false);
+    } else if (direction == ScrollDirection.forward && !_isFabVisible) {
+      setState(() => _isFabVisible = true);
     }
 
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      return;
+    if (_scrollController.position.pixels >
+        _scrollController.position.maxScrollExtent - 400) {
+      _loadMore();
     }
+  }
 
+  //--------------------------------------------------
+  Future<void> _loadInitial() async {
+    setState(() {
+      _isInitialLoading = true;
+      _events = [];
+      _lastDoc = null;
+      _hasMore = true;
+    });
 
-    final pos = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.medium,
+    final stopwatch = Stopwatch()..start();
+
+    final categoryValues =
+        selectedCategories.map((c) => c.firestoreValue).toSet();
+
+    final now = DateTime.now();
+
+    final shouldLoadHighlights = selectedCategories.isEmpty &&
+        selectedCities.isEmpty &&
+        !showPastEvents;
+
+    final results = await Future.wait([
+      EventQueryService.fetchPage(
+        fromDate: showPastEvents ? null : now,
+        toDate: showPastEvents ? now : null,
+        categories: categoryValues,
+        cities: selectedCities,
+        limit: 25,
+        descending: showPastEvents,
+      ),
+      shouldLoadHighlights
+          ? EventQueryService.fetchHighlights()
+          : Future.value(<Event>[]),
+    ]);
+
+    debugPrint("⏱️ Home Query dauerte: ${stopwatch.elapsedMilliseconds}ms");
+
+    final page = results[0] as EventPage;
+    final highlights = results[1] as List<Event>;
+
+    if (!mounted) return;
+
+    setState(() {
+      _events = page.events;
+      _highlights = highlights;
+      _lastDoc = page.lastDoc;
+      _hasMore = page.hasMore;
+      _isInitialLoading = false;
+    });
+  }
+
+  //--------------------------------------------------
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+
+    setState(() => _isLoadingMore = true);
+
+    final categoryValues =
+        selectedCategories.map((c) => c.firestoreValue).toSet();
+
+    final now = DateTime.now();
+
+    final page = await EventQueryService.fetchPage(
+      fromDate: showPastEvents ? null : now,
+      toDate: showPastEvents ? now : null,
+      categories: categoryValues,
+      cities: selectedCities,
+      limit: 25,
+      startAfter: _lastDoc,
+      descending: showPastEvents,
     );
 
     if (!mounted) return;
 
-setState(() {
-  _userPosition = pos;
-});
-
+    setState(() {
+      _events.addAll(page.events);
+      _lastDoc = page.lastDoc;
+      _hasMore = page.hasMore;
+      _isLoadingMore = false;
+    });
   }
 
   //--------------------------------------------------
-  // ✅ GEO: DISTANZ CHECK (NEU)
-  //--------------------------------------------------
-bool _isWithinRadius(Festival f) {
-  if (_userPosition == null) return true;
+  void _showLocationSheet() {
+    String citySearchQuery = '';
 
-  final distance = Geolocator.distanceBetween(
-    _userPosition!.latitude,
-    _userPosition!.longitude,
-    f.latitude,
-    f.longitude,
-  );
-
-  return distance <= _radiusKm * 1000;
-}
-
-// ✅ HIERHIN!
-double? _distanceInKm(Festival f) {
-  if (_userPosition == null) return null;
-
-  final distanceMeters = Geolocator.distanceBetween(
-    _userPosition!.latitude,
-    _userPosition!.longitude,
-    f.latitude,
-    f.longitude,
-  );
-
-  return distanceMeters / 1000;
-}
-
-
-  //--------------------------------------------------
-  bool _isPast(Festival f) {
-    final today = this.today;
-    final end = DateTime(f.endDate.year, f.endDate.month, f.endDate.day);
-    return end.isBefore(today);
-  }
-
-  bool _isToday(Festival f) {
-    final today = this.today;
-
-    final start = DateTime(f.startDate.year, f.startDate.month, f.startDate.day);
-    final end = DateTime(f.endDate.year, f.endDate.month, f.endDate.day);
-
-    return !start.isAfter(today) && !end.isBefore(today);
-  }
-
-//  bool _hasToday(List<Festival> list) {
- //   return list.any((f) => _isToday(f));
-  //}
-
-  //--------------------------------------------------
-  List<Festival> _applyFilter(List<Festival> festivals) {
-
-    List<Festival> list;
-
-    if (_filter == MonthFilter.favorites) {
-      list = festivals.where((f) => FavoriteService.isFavorite(f.id)).toList();
-    } else {
-      list = festivals.where((f) {
-        switch (_filter) {
-          case MonthFilter.past:
-            return _isPast(f);
-          case MonthFilter.today:
-            return _isToday(f);
-          case MonthFilter.may:
-            return f.startDate.month == 5;
-          case MonthFilter.june:
-            return f.startDate.month == 6;
-          case MonthFilter.july:
-            return f.startDate.month == 7;
-          case MonthFilter.august:
-            return f.startDate.month == 8;
-          default:
-            return true;
-        }
-      }).toList();
-    }
-
-    if (_searchQuery.isNotEmpty) {
-      list = list.where((f) =>
-          f.name.toLowerCase().contains(_searchQuery) ||
-          f.address.toLowerCase().contains(_searchQuery)
-      ).toList();
-    }
-
-    if (_filter != MonthFilter.past) {
-      list = list.where((f) => !_isPast(f)).toList();
-    }
-
-    
-
-  // ✅ GEO FILTER zuerst
-if (_userPosition != null) {
-  list = list.where(_isWithinRadius).toList();
-}
-
-if (_sortMode == SortMode.distance && _userPosition != null){
-
-  list.sort((a, b) {
-    final distA = _distanceInKm(a) ?? 999999;
-    final distB = _distanceInKm(b) ?? 999999;
-    return distA.compareTo(distB);
-  });
-} else {
-  list.sort((a, b) {
-    if (_isToday(a)) return -1;
-    if (_isToday(b)) return 1;
-    return a.startDate.compareTo(b.startDate);
-  });
-}
-
-    return list;
-  }
-
-  //--------------------------------------------------
-  @override
-  Widget build(BuildContext context) {
-
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('festivals').snapshots(),
-      builder: (context, snapshot) {
-
-  if (snapshot.connectionState == ConnectionState.waiting) {
-  return const Center(
-    child: CircularProgressIndicator(),
-  );
-}
-
-if (snapshot.hasError) {
-  return const Center(
-    child: Text("Fehler beim Laden.\nBitte Verbindung prüfen."),
-  );
-}
-
-if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-  return const Center(
-    child: Text("Keine Daten verfügbar"),
-  );
-}
-
-if (snapshot.hasError) {
-  return const Center(
-    child: Text("Fehler beim Laden.\nBitte Verbindung prüfen."),
-  );
-}
-
-if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-  return const Center(
-    child: Text("Keine Daten verfügbar"),
-  );
-}
-
-        final festivals = snapshot.data!.docs.map((doc) {
-          return Festival.fromMap({
-            ...doc.data() as Map<String, dynamic>,
-            'id': doc.id,
-          });
-        }).toList();
-
-        final filtered = _applyFilter(festivals);
-
-final activeFestivals =
-    filtered.where((f) => !_isPast(f)).toList();
-
-
-final pastFestivals =
-    festivals
-        .where((f) => _isPast(f))
-        .where((f) => _userPosition == null || _isWithinRadius(f))
-        .toList();
-
-
-        return Scaffold(
-          appBar: AppBar(
-  elevation: 0,
-  backgroundColor: Colors.green.shade700,
-
-  flexibleSpace: Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          Colors.green.shade800,
-          Colors.green.shade600,
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-    ),
-  ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final filteredCities = citySearchQuery.isEmpty
+                ? _availableCities
+                : _availableCities
+                    .where((c) =>
+                        c.toLowerCase().contains(citySearchQuery.toLowerCase()))
+                    .toList();
 
-  title: Row(
-    children: const [
-      Icon(Icons.radar, color: Colors.white, size: 35),
-      SizedBox(width: 8),
-      Text(
-        "SchützenRadar",
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 30,
-          letterSpacing: 0.4,
-        ),
-      ),
-    ],
-  ),
-),
+            return DraggableScrollableSheet(
+              initialChildSize: 0.8,
+              minChildSize: 0.4,
+              maxChildSize: 0.95,
+              expand: false,
+              builder: (context, scrollController) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Ort & Umkreis",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (selectedCities.isNotEmpty)
+                            TextButton(
+                              onPressed: () {
+                                setSheetState(() {
+                                  selectedCities.clear();
+                                });
+                              },
+                              child: const Text("Orte zurücksetzen"),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "Umkreis um deinen Standort: ${maxDistance.round()} km",
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                      Slider(
+                        value: maxDistance,
+                        min: 0,
+                        max: 500,
+                        divisions: 50,
+                        activeColor: AppColors.primary,
+                        onChanged: (value) {
+                          setSheetState(() {
+                            maxDistance = value;
+                          });
+                        },
+                      ),
+                      Text(
+                        "Gilt nur für Events, bei denen ein genauer Standort "
+                        "hinterlegt ist.",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        "Zeigt Events aus den ausgewählten Orten. "
+                        "Ohne Auswahl werden alle Orte angezeigt.",
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        decoration: InputDecoration(
+                          hintText: "Ort suchen...",
+                          prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onChanged: (value) {
+                          setSheetState(() {
+                            citySearchQuery = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: filteredCities.isEmpty
+                            ? Center(
+                                child: Text(
+                                  "Kein Ort gefunden",
+                                  style: TextStyle(color: Colors.grey.shade500),
+                                ),
+                              )
+                            : ListView.builder(
+                                controller: scrollController,
+                                itemCount: filteredCities.length,
+                                itemBuilder: (context, index) {
+                                  final city = filteredCities[index];
+                                  final isSelected =
+                                      selectedCities.contains(city);
 
-// FEST MELDEN BUTTON
-// FEST MELDEN BUTTON
-floatingActionButton: FloatingActionButton.extended(
-  onPressed: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const SubmitFestivalScreen(),
-      ),
-    );
-  },
-  icon: const Icon(Icons.add),
-  label: const Text("Fest hinzufügen"),
-),
-          //--------------------------------------------------
-          // ADMIN FAB (BLEIBT!)
-          //--------------------------------------------------
-     
-
-// NUR DER BODY TEIL IST GEÄNDERT – Rest bleibt gleich
-
-body: Column(
-  children: [
-
-    //--------------------------------------------------
-    // 🔍 SEARCH + FILTER DROPDOWN
-    //--------------------------------------------------
-    Padding(
-  padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-  child: TextField(
-    onChanged: (value) =>
-        setState(() => _searchQuery = value.toLowerCase()),
-    decoration: InputDecoration(
-      hintText: 'Fest oder Ort suchen...',
-      prefixIcon: const Icon(Icons.search),
-
-      suffixIcon: PopupMenuButton<String>(
-        icon: const Icon(Icons.tune),
-
-        onSelected: (value) {
-          setState(() {
-            // ✅ SORTIERUNG
-            if (value == "date") _sortMode = SortMode.date;
-            if (value == "distance") _sortMode = SortMode.distance;
-
-            // ✅ RADIUS
-            if (value == "radius10") _radiusKm = 10;
-            if (value == "radius25") _radiusKm = 25;
-            if (value == "radius50") _radiusKm = 50;
-            if (value == "radius100") _radiusKm = 100;
-            if (value == "radius200") _radiusKm = 200;
-            if (value == "radius500") _radiusKm = 500;
-
-            // ✅ UX BOOST
-            if (value.startsWith("radius")) {
-              _sortMode = SortMode.distance;
-            }
-          });
-        },
-
-        itemBuilder: (context) => [
-
-          const PopupMenuItem(
-            enabled: false,
-            child: Text("Sortierung"),
-          ),
-          CheckedPopupMenuItem(
-            value: "date",
-            checked: _sortMode == SortMode.date,
-            child: const Text("Datum"),
-          ),
-          CheckedPopupMenuItem(
-            value: "distance",
-            checked: _sortMode == SortMode.distance,
-            child: const Text("Entfernung"),
-          ),
-
-          const PopupMenuDivider(),
-
-          const PopupMenuItem(
-            enabled: false,
-            child: Text("Umkreis"),
-          ),
-          CheckedPopupMenuItem(
-            value: "radius10",
-            checked: _radiusKm == 10,
-            child: const Text("10 km"),
-          ),
-          CheckedPopupMenuItem(
-            value: "radius25",
-            checked: _radiusKm == 25,
-            child: const Text("25 km"),
-          ),
-          CheckedPopupMenuItem(
-            value: "radius50",
-            checked: _radiusKm == 50,
-            child: const Text("50 km"),
-          ),
-          CheckedPopupMenuItem(
-            value: "radius100",
-            checked: _radiusKm == 100,
-            child: const Text("100 km"),
-          ),
-          CheckedPopupMenuItem(
-            value: "radius200",
-            checked: _radiusKm == 200,
-            child: const Text("200 km"),
-          ),
-          CheckedPopupMenuItem(
-            value: "radius500",
-            checked: _radiusKm == 500,
-            child: const Text("500 km (Deutschlandweit)"),
-          ),
-        ],
-      ),
-
-      filled: true,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-    ),
-  ),
-),
-
-    //--------------------------------------------------
-    // ✅ MONATSFILTER (BLEIBT)
-    //--------------------------------------------------
-    SizedBox(
-      height: 42,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        children: [
-          _btn('⭐', MonthFilter.favorites),
-          _btn('Alle', MonthFilter.all),
-          _btn('Heute', MonthFilter.today),
-          _btn('Mai', MonthFilter.may),
-          _btn('Juni', MonthFilter.june),
-          _btn('Juli', MonthFilter.july),
-          _btn('August', MonthFilter.august),
-
-          
-        ],
-      ),
-      
-    ),
-    
-
-    const SizedBox(height: 8),
-
-//--------------------------------------------------
-// 🚕 ACTION BUTTONS (SCHLANK & CLEAN)
-//--------------------------------------------------
-Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 12),
-  child: Row(
-    children: [
-
-      //--------------------------------------------------
-      // 🚕 TAXI
-      //--------------------------------------------------
-      Expanded(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const TaxiScreen(),
-              ),
+                                  return CheckboxListTile(
+                                    value: isSelected,
+                                    activeColor: AppColors.primary,
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(city),
+                                    onChanged: (value) {
+                                      setSheetState(() {
+                                        if (value == true) {
+                                          selectedCities.add(city);
+                                        } else {
+                                          selectedCities.remove(city);
+                                        }
+                                      });
+                                    },
+                                  );
+                                },
+                              ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("Anwenden"),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             );
           },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.yellow.shade300,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.local_taxi, size: 18, color: Colors.black87),
-                SizedBox(width: 6),
-                Text(
-                  "Taxi",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        );
+      },
+    ).then((_) {
+      setState(() {});
+      _loadInitial();
+    });
+  }
+
+  //--------------------------------------------------
+  void _showCategorySheet() {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-
-      const SizedBox(width: 8),
-
-      //--------------------------------------------------
-      // 🗺 KARTE
-      //--------------------------------------------------
-      Expanded(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const MapScreen(),
-              ),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade400,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.map, size: 18, color: Colors.white),
-                SizedBox(width: 6),
-                Text(
-                  "Karte",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: Colors.white,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Kategorien",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (selectedCategories.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            setSheetState(() {
+                              selectedCategories.clear();
+                            });
+                          },
+                          child: const Text("Zurücksetzen"),
+                        ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+                  const SizedBox(height: 12),
+                  // ✅ Scrollbar, damit bei vielen Kategorien nichts overflowt
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: EventCategory.values.map((category) {
+                      final selected = selectedCategories.contains(category);
 
-      const SizedBox(width: 8),
-
-      //--------------------------------------------------
-      // 📅 KALENDER
-      //--------------------------------------------------
-      Expanded(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const CalendarScreen(),
-              ),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.green.shade400,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.calendar_month, size: 18, color: Colors.white),
-                SizedBox(width: 6),
-                Text(
-                  "Kalender",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: Colors.white,
+                      return FilterChip(
+                        selected: selected,
+                        showCheckmark: false,
+                        avatar: CircleAvatar(
+                          radius: 6,
+                          backgroundColor: category.color,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: selected
+                                ? AppColors.primary
+                                : Colors.grey.shade300,
+                          ),
+                        ),
+                        selectedColor:
+                            AppColors.primary.withValues(alpha: 0.12),
+                        labelStyle: TextStyle(
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        label: Text(category.label),
+                        onSelected: (value) {
+                          setSheetState(() {
+                            if (value) {
+                              selectedCategories.add(category);
+                            } else {
+                              selectedCategories.remove(category);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ],
-  ),
-),
-
-    //--------------------------------------------------
-    // ✅ LISTE
-    //--------------------------------------------------
-    Expanded(
-      child: ListView(
-        children: [
-
-          
-          //--------------------------------------------------
-          // TRENNER
-          //--------------------------------------------------
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-            height: 6,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.green.shade300,
-                  Colors.green.shade600,
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Anwenden"),
+                    ),
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-
-//--------------------------------------------------
-// AKTUELLE FESTE
-//--------------------------------------------------
-...activeFestivals.map((f) {
-  final distance = _distanceInKm(f);
-
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      
-FestivalCard(
-  key: ValueKey("${f.id}_${FavoriteService.isFavorite(f.id)}"),
-  festival: f,
-  onFavoriteChanged: () {
-    setState(() {});
-  },
-),
-
-      if (distance != null)
-        Padding(
-          padding: const EdgeInsets.only(left: 16, bottom: 8),
-          child: Text(
-            "📍 ${distance.toStringAsFixed(1)} km entfernt",
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ),
-    ],
-  );
-}).toList(),
-
-//--------------------------------------------------
-// VERGANGENE FESTE
-//--------------------------------------------------
-if (pastFestivals.isNotEmpty) ...[
-
-  const Padding(
-    padding: EdgeInsets.fromLTRB(12, 16, 12, 8),
-    child: Text(
-      "Vergangene Feste",
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-      ),
-    ),
-  ),
-
-  ...pastFestivals.take(5).map((f) {
-    return FestivalCard(
-  festival: f,
-  onFavoriteChanged: () {
-    setState(() {});
-  },
-
-    );
-  }).toList(),
-
-  //--------------------------------------------------
-  // BUTTON → ALLE VERGANGENEN
-  //--------------------------------------------------
-  Center(
-    child: TextButton(
-      onPressed: () {
-        setState(() {
-          _filter = MonthFilter.past;
-        });
+            );
+          },
+        );
       },
-      child: const Text("Alle vergangenen anzeigen"),
-    ),
-  ),
-],
+    ).then((_) => _loadInitial());
+  }
 
+  //--------------------------------------------------
+  String _categoryChipLabel() {
+    if (selectedCategories.isEmpty) return "Kategorie";
+    if (selectedCategories.length <= 2) {
+      return selectedCategories.map((c) => c.label).join(", ");
+    }
+    return "${selectedCategories.length} Kategorien";
+  }
 
+  Widget _categoryChipAvatar(Color secondaryTextColor) {
+    if (selectedCategories.length == 1) {
+      return CircleAvatar(
+        radius: 6,
+        backgroundColor: selectedCategories.first.color,
+      );
+    }
 
-        ],
-      ),
-    ),
-  ],
-),
-
-
-); // ✅ Scaffold
-},
+    return Icon(
+      Icons.category_outlined,
+      size: 18,
+      color: selectedCategories.isNotEmpty
+          ? AppColors.primary
+          : secondaryTextColor,
     );
   }
 
+  String _sectionTitle() {
+    if (selectedCategories.isEmpty) return "Highlights";
+    return selectedCategories.map((c) => c.label).join(", ");
+  }
 
   //--------------------------------------------------
-  Widget _btn(String label, MonthFilter value) {
-    final active = _filter == value;
+  // ✅ ANGEPASST: jetzt antippbar (öffnet die Mehrtages-Vorhersage), mit
+  // kleinem Chevron als Hinweis auf weitere Infos.
+  //--------------------------------------------------
+  Widget? _buildHeaderWeatherChip(bool isDark) {
+    if (_weatherFailed || _todayWeather == null) return null;
+
+    final weather = _todayWeather!;
+    final isRainy = WeatherService.isRainy(weather.weatherCode);
+
+    final accentColor = isRainy ? AppColors.secondary : AppColors.warning;
 
     return GestureDetector(
-      onTap: () => setState(() => _filter = value),
+      onTap: () => showWeatherForecastSheet(context, _forecast),
       child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? Colors.green : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(20),
+          color: accentColor.withValues(alpha: isDark ? 0.22 : 0.14),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: accentColor.withValues(alpha: 0.4)),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.white : Colors.black87,
-            fontWeight: FontWeight.w600,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              WeatherService.iconForCode(weather.weatherCode),
+              size: 16,
+              color: accentColor,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              "${weather.maxTemp.round()}°",
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: accentColor,
+              ),
+            ),
+            Icon(Icons.expand_more_rounded, size: 14, color: accentColor),
+          ],
         ),
       ),
     );
   }
 
-  //--------------------------------------------------
-  // ADD + EDIT (UNVERÄNDERT übernommen)
-  //--------------------------------------------------
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondaryTextColor =
+        isDark ? Colors.grey.shade400 : Colors.grey.shade600;
 
+    final hasActiveLocationFilter =
+        selectedCities.isNotEmpty || maxDistance != _defaultMaxDistance;
 
- //void _showEditFestivalDialog(Festival f) {}
+    final visibleEvents = _events.where((e) {
+      final matchesSearch = searchQuery.isEmpty ||
+          e.name.toLowerCase().contains(searchQuery) ||
+          e.address.toLowerCase().contains(searchQuery);
+
+      if (!matchesSearch) return false;
+
+      final hasCoordinates = e.latitude != 0 || e.longitude != 0;
+
+      if (userLatitude != null && userLongitude != null && hasCoordinates) {
+        final distanceKm = Geolocator.distanceBetween(
+              userLatitude!,
+              userLongitude!,
+              e.latitude,
+              e.longitude,
+            ) /
+            1000;
+
+        if (distanceKm > maxDistance) return false;
+      }
+
+      return true;
+    }).toList();
+
+    final weatherChip = _buildHeaderWeatherChip(isDark);
+
+    return Scaffold(
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      floatingActionButton: IgnorePointer(
+  ignoring: !_isFabVisible,
+  child: AnimatedScale(
+    scale: _isFabVisible ? 1.0 : 0.0,
+    duration: const Duration(milliseconds: 200),
+    curve: Curves.easeInOut,
+    child: AnimatedOpacity(
+      opacity: _isFabVisible ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 200),
+      // ✅ ANGEPASST: Extended FAB (Icon + Label) statt reinem Icon-Kreis –
+      // deutlich auffälliger und besser erkennbar, sobald er sichtbar ist.
+      // Das Verschwinden beim Scrollen nach unten bleibt unverändert, das
+      // löst weiterhin das Überlappungsproblem mit Karteninhalten.
+      child: FloatingActionButton.extended(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 3,
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SubmitEventScreen()),
+          );
+        },
+        icon: const Icon(Icons.add_rounded),
+        label: const Text(
+          "Event einreichen",
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+    ),
+  ),
+),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.secondary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.radar_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "ErlebnisRadar",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ),
+                  if (weatherChip != null) weatherChip,
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: "Veranstaltung oder Ort suchen",
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        filled: true,
+                        fillColor:
+                            isDark ? AppColors.cardDark : AppColors.cardLight,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() => searchQuery = value.toLowerCase().trim());
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Tooltip(
+                    message: "Kalender",
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CalendarScreen()),
+                        );
+                      },
+                      child: Container(
+                        height: 56,
+                        width: 64,
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.cardDark : AppColors.cardLight,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.calendar_month_rounded,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              "Kalender",
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            ShaderMask(
+              shaderCallback: (Rect bounds) {
+                return const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Colors.white,
+                    Colors.white,
+                    Colors.transparent,
+                  ],
+                  stops: [0.0, 0.90, 1.0],
+                ).createShader(bounds);
+              },
+              blendMode: BlendMode.dstIn,
+              child: SizedBox(
+                height: 44,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        selected: hasActiveLocationFilter,
+                        showCheckmark: false,
+                        avatar: Icon(
+                          Icons.location_on_outlined,
+                          size: 18,
+                          color: hasActiveLocationFilter
+                              ? AppColors.primary
+                              : secondaryTextColor,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: hasActiveLocationFilter
+                                ? AppColors.primary
+                                : (isDark ? Colors.grey.shade700 : Colors.grey.shade300),
+                          ),
+                        ),
+                        selectedColor: AppColors.primary.withValues(alpha: 0.12),
+                        labelStyle: TextStyle(
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          fontWeight: FontWeight.w500,
+                        ),
+                        label: Text(
+                          selectedCities.isEmpty
+                              ? "Ort"
+                              : selectedCities.length == 1
+                                  ? selectedCities.first
+                                  : "${selectedCities.length} Orte",
+                        ),
+                        onSelected: (_) => _showLocationSheet(),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        selected: selectedCategories.isNotEmpty,
+                        showCheckmark: false,
+                        avatar: _categoryChipAvatar(secondaryTextColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: selectedCategories.isNotEmpty
+                                ? AppColors.primary
+                                : (isDark ? Colors.grey.shade700 : Colors.grey.shade300),
+                          ),
+                        ),
+                        selectedColor: AppColors.primary.withValues(alpha: 0.12),
+                        labelStyle: TextStyle(
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          fontWeight: FontWeight.w500,
+                        ),
+                        label: Text(_categoryChipLabel()),
+                        onSelected: (_) => _showCategorySheet(),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 20),
+                      child: FilterChip(
+                        selected: showPastEvents,
+                        showCheckmark: true,
+                        checkmarkColor: secondaryTextColor,
+                        backgroundColor: isDark
+                            ? Colors.grey.shade900
+                            : Colors.grey.shade100,
+                        selectedColor: isDark
+                            ? Colors.grey.shade800
+                            : Colors.grey.shade200,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+                          ),
+                        ),
+                        label: Text(
+                          "Vergangene",
+                          style: TextStyle(color: secondaryTextColor, fontSize: 12),
+                        ),
+                        onSelected: (value) {
+                          setState(() => showPastEvents = value);
+                          _loadInitial();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _isInitialLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: _loadInitial,
+                      child: ListView(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.only(bottom: 100),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                            child: Text(
+                              _sectionTitle(),
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              ),
+                            ),
+                          ),
+                          // ✅ TIER 4: Hinweis-Banner, wenn nach "Sonstiges"
+                          // gefiltert wird – diese Events konnten aus den
+                          // Quelldaten keiner festen Kategorie zugeordnet werden.
+                          if (selectedCategories
+                              .contains(EventCategory.sonstiges))
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.blueGrey.shade900
+                                          .withValues(alpha: 0.4)
+                                      : Colors.blueGrey.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? Colors.grey.shade800
+                                        : Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.info_outline_rounded,
+                                        size: 18, color: secondaryTextColor),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        "Diese Veranstaltungen ließen sich anhand "
+                                        "der vorliegenden Quelldaten keiner festen "
+                                        "Kategorie zuordnen.",
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          height: 1.35,
+                                          color: secondaryTextColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          if (visibleEvents.isEmpty && _highlights.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(40),
+                              child: Center(
+                                child: Text(
+                                  "Keine Veranstaltungen gefunden",
+                                  style: TextStyle(color: secondaryTextColor),
+                                ),
+                              ),
+                            ),
+                          ..._highlights.map(
+                            (event) => EventCard(
+                              event: event,
+                              onFavoriteChanged: () => setState(() {}),
+                            ),
+                          ),
+                          ...visibleEvents.map(
+                            (event) => EventCard(
+                              event: event,
+                              onFavoriteChanged: () => setState(() {}),
+                            ),
+                          ),
+                          if (_isLoadingMore)
+                            const Padding(
+                              padding: EdgeInsets.all(20),
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                        ],
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

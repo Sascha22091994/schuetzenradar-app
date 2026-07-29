@@ -1,5 +1,5 @@
 # Flutter MainActivity NICHT entfernen
--keep class de.eventradar.app.MainActivity { *; }
+-keep class de.erlebnisradar.app.MainActivity { *; }
 
 # Flutter core
 -keep class io.flutter.** { *; }
